@@ -88,16 +88,7 @@ jobs:
               ;;
           esac
           terraform plan -input=false -detailed-exitcode -var-file="$TF_ENVIRONMENT/$TF_ENVIRONMENT.tfvars" -out=planfile
-          #exitcode=$?
-          #if [ $exitcode -eq 2 ]; then
-            #echo "Changes detected in terraform plan."
           echo "Installing tf-summarize via go..."
           go install github.com/dineshba/tf-summarize@latest >/dev/null 2>&1
           terraform show -json planfile | $HOME/go/bin/tf-summarize
           terraform show -json planfile | $HOME/go/bin/tf-summarize -tree
-          #elif [ $exitcode -eq 0 ]; then
-            #echo "No changes detected in terraform plan."
-          #else
-            #echo "Terraform plan failed!"
-            #exit $exitcode
-          #fi
