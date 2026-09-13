@@ -1,3 +1,9 @@
+- [DTAP Automation PoC](#dtap-automation-poc)
+  - [Objectives](#objectives)
+  - [Suggested branch strategy](#suggested-branch-strategy)
+  - [Documentation](#documentation)
+  - [PoC boundary](#poc-boundary)
+
 # DTAP Automation PoC
 
 This repository is a proof of concept for a controlled, automated change
