@@ -59,14 +59,29 @@ jobs:
       - name: Terraform Init
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
-          terraform init -backend-config="${{ env.TF_ENVIRONMENT }}/${{ env.TF_ENVIRONMENT }}.tfbackend" -input=false
+          set -euo pipefail
+          case "$TF_ENVIRONMENT" in
+            dev|prod) ;;
+            *)
+              echo "TF_ENVIRONMENT must be dev or prod, got: $TF_ENVIRONMENT" >&2
+              exit 1
+              ;;
+          esac
+          terraform init -backend-config="$TF_ENVIRONMENT/$TF_ENVIRONMENT.tfbackend" -input=false
           terraform validate
 
       - name: Terraform Plan
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
-          set -o pipefail
-          terraform plan -input=false -detailed-exitcode -var-file="${{ env.TF_ENVIRONMENT }}/${{ env.TF_ENVIRONMENT }}.tfvars" -out=planfile
+          set -euo pipefail
+          case "$TF_ENVIRONMENT" in
+            dev|prod) ;;
+            *)
+              echo "TF_ENVIRONMENT must be dev or prod, got: $TF_ENVIRONMENT" >&2
+              exit 1
+              ;;
+          esac
+          terraform plan -input=false -detailed-exitcode -var-file="$TF_ENVIRONMENT/$TF_ENVIRONMENT.tfvars" -out=planfile
           echo "Installing tf-summarize via go..."
           go install github.com/dineshba/tf-summarize@latest >/dev/null 2>&1
           terraform show -json planfile | $HOME/go/bin/tf-summarize
@@ -76,4 +91,11 @@ jobs:
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
           set -euo pipefail
-          terraform apply -var-file="${{ env.TF_ENVIRONMENT }}/${{ env.TF_ENVIRONMENT }}.tfvars" -input=false planfile
+          case "$TF_ENVIRONMENT" in
+            dev|prod) ;;
+            *)
+              echo "TF_ENVIRONMENT must be dev or prod, got: $TF_ENVIRONMENT" >&2
+              exit 1
+              ;;
+          esac
+          terraform apply -var-file="$TF_ENVIRONMENT/$TF_ENVIRONMENT.tfvars" -input=false planfile
