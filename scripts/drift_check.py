@@ -142,7 +142,12 @@ Rules:
 - Use the PR title, body, changed-file patches, and final file contents at the PR head as evidence.
 - Evaluate the resulting repository state, not only lines newly added in the patch.
 - A requirement is satisfied when it is present and enabled in the final file, even if that line was unchanged.
-- Do not report uncertainty as a missing requirement. Report an item as missing only when the final content clearly omits or contradicts it.
+- Interpret ordinary issue prose semantically; do not require the issue author to prescribe exact filenames, flag names, environment-variable names, library calls, or implementation wording unless that exact detail is itself the acceptance criterion.
+- Treat equivalent implementation interfaces as satisfying the requirement. For example, a script that accepts `--issue-number` and `--pr-number` and is invoked with values from `ISSUE_NUMBER` and `PR_NUMBER` satisfies a requirement to take issue and PR numbers as inputs.
+- Treat a workflow requirement as satisfied when the final workflow is valid and contains the required enabled job, step, trigger, or delegation, even if the job or trigger was not newly added by the PR.
+- Do not report uncertainty, lack of a newly added line, or a minor naming/interface difference as a missing requirement.
+- Report a missing item only when there is strong, direct evidence that the final repository state omits, disables, or contradicts a material acceptance criterion.
+- When evidence is incomplete but there is no direct contradiction, prefer aligned=true and mention any low-confidence concern in the summary rather than in missing.
 - Do not invent requirements. Only judge what is explicitly described or implied by the issue.
 - If the PR fully satisfies the issue, set aligned=true and missing=[].
 - If the PR is missing work, set aligned=false and list the concrete missing items.
@@ -199,7 +204,10 @@ def call_openai(prompt: str, model: str, api_url: str, api_key: str) -> dict[str
                 "role": "system",
                 "content": (
                     "You review whether a pull request implements its linked GitHub issue. "
-                    "Return JSON only with keys aligned (boolean), missing (array of strings), summary (string)."
+                    "Return JSON only with keys aligned (boolean), missing (array of strings), summary (string). "
+                    "Be pragmatic rather than legalistic: mark aligned=false only for clear, material omissions "
+                    "or contradictions in the final repository state. Do not fail a PR because it uses an "
+                    "equivalent implementation or a reasonable alternative input interface."
                 ),
             },
             {"role": "user", "content": prompt},
