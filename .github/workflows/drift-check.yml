@@ -9,11 +9,20 @@ on:
         description: Pull request number to inspect
         required: true
         type: string
+      model:
+        description: Model to use for the drift check
+        required: true
+        default: gpt-5.4-mini
+        type: choice
+        options:
+          - gpt-5.4-mini
+          - gpt-5.4
+          - claude-sonnet-5
 
 permissions:
-  contents: read # Read repository contents
-  issues: read # Read issue data
-  pull-requests: read # Read PR metadata
+  contents: read
+  issues: read
+  pull-requests: read
 
 concurrency:
   group: drift-check-${{ github.event.pull_request.number || inputs.pull_request_number }}
@@ -24,6 +33,9 @@ jobs:
     name: Check issue and PR alignment
     runs-on: ubuntu-latest
     steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
       - name: Resolve linked issue
         id: issue
         env:
@@ -41,56 +53,25 @@ jobs:
             exit 1
           fi
           issue_number="${BASH_REMATCH[1]}"
-          gh api "repos/$REPOSITORY/issues/$issue_number" > issue.json
-          gh pr diff "$PR_NUMBER" --repo "$REPOSITORY" > pull-request.diff
           echo "number=$issue_number" >> "$GITHUB_OUTPUT"
 
       - name: Ask OpenAI to check for drift
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_API_URL: ${{ vars.OPENAI_API_URL }}
-          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+          OPENAI_MODEL: ${{ inputs.model || 'gpt-5.4-mini' }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
           ISSUE_NUMBER: ${{ steps.issue.outputs.number }}
           PR_NUMBER: ${{ github.event.pull_request.number || inputs.pull_request_number }}
         run: |
           set -euo pipefail
           : "${OPENAI_API_KEY:?Configure OPENAI_API_KEY in the Github Actions Secrets}"
           : "${OPENAI_API_URL:?Configure OPENAI_API_URL in the Github Actions Variables}"
-          : "${OPENAI_MODEL:?Configure OPENAI_MODEL in the Github Actions Variables}"
+          : "${OPENAI_MODEL:?Select a model in the workflow input}"
+          : "${GITHUB_TOKEN:?GitHub token is required to read issue and PR metadata}"
 
-          jq -n \
-            --arg model "$OPENAI_MODEL" \
-            --rawfile issue issue.json \
-            --rawfile diff pull-request.diff \
-            --arg issue_number "$ISSUE_NUMBER" \
-            --arg pr_number "$PR_NUMBER" \
-            '{
-              model: $model,
-              response_format: {type: "json_object"},
-              messages: [
-                {
-                  role: "system",
-                  content: "You review whether a pull request implements its linked GitHub issue. Return JSON only with keys: aligned (boolean), missing (array of strings), summary (string). Do not invent requirements. Treat the issue title and body as requirements; use the diff as evidence."
-                },
-                {
-                  role: "user",
-                  content: ("Issue #" + $issue_number + " and pull request #" + $pr_number + "\n\nISSUE:\n" + $issue + "\n\nDIFF:\n" + $diff)
-                }
-              ]
-            }' > request.json
-
-          curl --fail-with-body --silent --show-error \
-            --url "$OPENAI_API_URL" \
-            --header "Authorization: Bearer $OPENAI_API_KEY" \
-            --header "Content-Type: application/json" \
-            --data-binary @request.json > response.json
-              
-          jq -e '.choices[0].message.content' response.json \
-            | jq -e 'fromjson | select(.aligned == true)' > drift-result.json \
-            || {
-              echo "The PR does not satisfy the linked issue:"
-              jq -r '.choices[0].message.content // "Invalid endpoint response"' response.json
-              exit 1
-            }
-          cat drift-result.json
-
+          python3 scripts/drift_check.py \
+            --issue-number "$ISSUE_NUMBER" \
+            --pr-number "$PR_NUMBER" \
+            --repo "$GITHUB_REPOSITORY"

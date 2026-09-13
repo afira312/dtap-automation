@@ -43,7 +43,9 @@ Rules:
 6. Configure the production environment with required reviewers. A merge
    starts deployment only after that approval.
 7. Configure Github Action secrets for `Drift-Check`, add `OPENAI_API_KEY` as a secret
-8. Configure Github Action variables for `Drift-Check`, add `OPENAI_API_URL` and `OPENAI_MODEL` 
+8. Configure the Github Action variable `OPENAI_API_URL` for `Drift-Check`.
+   The model is selected from the workflow input and defaults to `gpt-5.4-mini`;
+   `gpt-5.4` and `claude-sonnet-5` are also available.
 9. The `Drift-Check` runs
    on every PR commit and requires a branch name beginning with
    `feature/<issue-number>-`.
