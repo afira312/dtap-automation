@@ -4,12 +4,13 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import os
 import sys
 from typing import Any, Iterable
 from urllib import error as urllib_error
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 from urllib import request as urllib_request
 
 GITHUB_API_URL = "https://api.github.com"
@@ -47,7 +48,7 @@ def github_headers() -> dict[str, str]:
     }
 
 
-def github_get(path: str, repo: str) -> dict[str, Any]:
+def github_get(path: str, repo: str) -> Any:
     url = f"{GITHUB_API_URL}/repos/{repo}/{path}"
     req = urllib_request.Request(url, headers=github_headers())
     with urllib_request.urlopen(req, timeout=30) as response:
@@ -63,7 +64,29 @@ def fetch_pr(pr_number: int, repo: str) -> dict[str, Any]:
 
 
 def fetch_pr_files(pr_number: int, repo: str) -> list[dict[str, Any]]:
-    return github_get(f"pulls/{pr_number}/files", repo)
+    return github_get(f"pulls/{pr_number}/files?per_page=100", repo)
+
+
+def fetch_file_content(filename: str, ref: str, repo: str) -> str:
+    encoded_filename = quote(filename, safe="/")
+    file_data = github_get(f"contents/{encoded_filename}?ref={quote(ref, safe='')}", repo)
+    encoded_content = file_data.get("content")
+    if not isinstance(encoded_content, str):
+        raise RuntimeError(f"GitHub returned no encoded content for {filename}.")
+    return base64.b64decode(encoded_content).decode("utf-8")
+
+
+def fetch_changed_file_contents(
+    files: Iterable[dict[str, Any]], ref: str, repo: str
+) -> dict[str, str]:
+    contents: dict[str, str] = {}
+    for file_info in files:
+        filename = file_info.get("filename")
+        status = file_info.get("status")
+        if not isinstance(filename, str) or status == "removed":
+            continue
+        contents[filename] = fetch_file_content(filename, ref, repo)
+    return contents
 
 
 def to_text(value: Any) -> str:
@@ -78,7 +101,12 @@ def to_text(value: Any) -> str:
     return str(value)
 
 
-def build_prompt(issue: dict[str, Any], pr: dict[str, Any], files: Iterable[dict[str, Any]]) -> str:
+def build_prompt(
+    issue: dict[str, Any],
+    pr: dict[str, Any],
+    files: Iterable[dict[str, Any]],
+    final_file_contents: dict[str, str],
+) -> str:
     issue_body = to_text(issue.get("body") or "No issue body provided.")
     issue_title = to_text(issue.get("title") or "No issue title provided.")
     pr_body = to_text(pr.get("body") or "No PR body provided.")
@@ -89,7 +117,14 @@ def build_prompt(issue: dict[str, Any], pr: dict[str, Any], files: Iterable[dict
         filename = to_text(file_info.get("filename") or "unknown")
         patch = to_text(file_info.get("patch") or "")
         status = to_text(file_info.get("status") or "")
-        file_sections.append(f"File: {filename}\nStatus: {status}\nPatch:\n{patch or 'No patch available.'}\n")
+        final_content = final_file_contents.get(filename)
+        file_sections.append(
+            f"File: {filename}\n"
+            f"Status: {status}\n"
+            f"Patch:\n{patch or 'No patch available.'}\n"
+            f"Final file content at the PR head:\n"
+            f"{final_content if final_content is not None else 'File is deleted or content is unavailable.'}\n"
+        )
 
     file_summary = "\n\n".join(file_sections) if file_sections else "No changed files were returned by the GitHub API."
 
@@ -104,7 +139,10 @@ Return JSON only with this shape:
 
 Rules:
 - Use the issue title and body as the acceptance criteria.
-- Use the PR title, body, and changed-file patches as evidence.
+- Use the PR title, body, changed-file patches, and final file contents at the PR head as evidence.
+- Evaluate the resulting repository state, not only lines newly added in the patch.
+- A requirement is satisfied when it is present and enabled in the final file, even if that line was unchanged.
+- Do not report uncertainty as a missing requirement. Report an item as missing only when the final content clearly omits or contradicts it.
 - Do not invent requirements. Only judge what is explicitly described or implied by the issue.
 - If the PR fully satisfies the issue, set aligned=true and missing=[].
 - If the PR is missing work, set aligned=false and list the concrete missing items.
@@ -238,7 +276,12 @@ def main() -> int:
         issue = fetch_issue(args.issue_number, repo)
         pr = fetch_pr(args.pr_number, repo)
         files = fetch_pr_files(args.pr_number, repo)
-        prompt = build_prompt(issue, pr, files)
+        head = pr.get("head")
+        head_sha = head.get("sha") if isinstance(head, dict) else None
+        if not isinstance(head_sha, str) or not head_sha:
+            raise RuntimeError("GitHub PR response did not include the head commit SHA.")
+        final_file_contents = fetch_changed_file_contents(files, head_sha, repo)
+        prompt = build_prompt(issue, pr, files, final_file_contents)
         result = call_openai(prompt, model, api_url, api_key)
     except Exception as exc:  # pragma: no cover - runtime guard for CLI usage
         print(f"error: {exc}", file=sys.stderr)
