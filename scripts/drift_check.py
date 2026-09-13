@@ -9,6 +9,7 @@ import os
 import sys
 from typing import Any, Iterable
 from urllib import error as urllib_error
+from urllib.parse import urlparse
 from urllib import request as urllib_request
 
 GITHUB_API_URL = "https://api.github.com"
@@ -126,6 +127,31 @@ PR changed files:
 """
 
 
+def resolve_api_url(api_url: str) -> str:
+    """Accept either a chat-completions URL or an OpenAI-compatible base URL."""
+    normalized_url = api_url.rstrip("/")
+    parsed_url = urlparse(normalized_url)
+    path = parsed_url.path.rstrip("/")
+
+    if path.endswith("/chat/completions"):
+        return normalized_url
+    if path.endswith("/v1"):
+        return f"{normalized_url}/chat/completions"
+    if parsed_url.hostname and parsed_url.hostname.endswith(".openai.azure.com"):
+        return f"{normalized_url}/openai/v1/chat/completions"
+    return f"{normalized_url}/openai/v1/chat/completions"
+
+
+def api_headers(api_url: str, api_key: str) -> dict[str, str]:
+    parsed_url = urlparse(api_url)
+    headers = {"Content-Type": "application/json"}
+    if parsed_url.hostname and parsed_url.hostname.endswith(".openai.azure.com"):
+        headers["api-key"] = api_key
+    else:
+        headers["Authorization"] = f"Bearer {api_key}"
+    return headers
+
+
 def call_openai(prompt: str, model: str, api_url: str, api_key: str) -> dict[str, Any]:
     payload = {
         "model": model,
@@ -140,28 +166,35 @@ def call_openai(prompt: str, model: str, api_url: str, api_key: str) -> dict[str
             },
             {"role": "user", "content": prompt},
         ],
-        "temperature": 0.1,
     }
 
     data = json.dumps(payload).encode("utf-8")
+    request_url = resolve_api_url(api_url)
     request = urllib_request.Request(
-        url=api_url,
+        url=request_url,
         data=data,
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
+        headers=api_headers(request_url, api_key),
         method="POST",
     )
 
     try:
         with urllib_request.urlopen(request, timeout=60) as response:
-            payload = json.loads(response.read().decode("utf-8"))
+            response_body = response.read().decode("utf-8")
     except urllib_error.HTTPError as exc:
         response_body = exc.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"OpenAI request failed with HTTP {exc.code}: {response_body}") from exc
+        raise RuntimeError(
+            f"OpenAI request failed with HTTP {exc.code} at {request_url}: {response_body or '<empty response>'}"
+        ) from exc
     except urllib_error.URLError as exc:
-        raise RuntimeError(f"Could not reach the OpenAI-compatible endpoint: {exc}") from exc
+        raise RuntimeError(f"Could not reach the OpenAI-compatible endpoint {request_url}: {exc}") from exc
+
+    try:
+        payload = json.loads(response_body)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(
+            f"OpenAI endpoint returned non-JSON content at {request_url}: "
+            f"{response_body[:500] or '<empty response>'}"
+        ) from exc
 
     try:
         content = payload["choices"][0]["message"]["content"]
@@ -171,7 +204,12 @@ def call_openai(prompt: str, model: str, api_url: str, api_key: str) -> dict[str
     if isinstance(content, list):
         content = "".join(item.get("text", "") for item in content if isinstance(item, dict))
 
-    parsed = json.loads(content)
+    try:
+        parsed = json.loads(content)
+    except (TypeError, json.JSONDecodeError) as exc:
+        raise RuntimeError(
+            f"OpenAI returned invalid JSON in message content: {content!r}"
+        ) from exc
     if not isinstance(parsed, dict):
         raise RuntimeError(f"OpenAI returned a non-object JSON value: {parsed!r}")
     return parsed

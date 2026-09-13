@@ -44,6 +44,8 @@ Rules:
    starts deployment only after that approval.
 7. Configure Github Action secrets for `Drift-Check`, add `OPENAI_API_KEY` as a secret
 8. Configure the Github Action variable `OPENAI_API_URL` for `Drift-Check`.
+   This may be an OpenAI-compatible chat-completions URL or an Azure OpenAI
+   resource URL such as `https://<resource>.openai.azure.com/`.
    The model is selected from the workflow input and defaults to `gpt-5.4-mini`;
    `gpt-5.4` and `claude-sonnet-5` are also available.
 9. The `Drift-Check` runs
