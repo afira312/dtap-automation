@@ -51,7 +51,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-
+        with:
+          persist-credentials: false
+          
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4 #dfe3c3f305bd9e0a4732411b2eb6d3f28e3a3d40 # v4.0.1
 
