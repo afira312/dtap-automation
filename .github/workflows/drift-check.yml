@@ -20,9 +20,9 @@ on:
           - claude-sonnet-5
 
 permissions:
-  contents: read
-  issues: read
-  pull-requests: read
+  contents: read # read repository content
+  issues: read # read issues content
+  pull-requests: read # read pr content
 
 concurrency:
   group: drift-check-${{ github.event.pull_request.number || inputs.pull_request_number }}
