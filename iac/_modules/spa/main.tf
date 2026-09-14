@@ -33,6 +33,7 @@ module "storage" {
   account_sku_name                = "Standard_LRS"
   account_tier                    = "Standard"
   allow_nested_items_to_be_public = false
+  public_network_access_enabled   = true
   containers = {
     release = {
       name          = "release"
