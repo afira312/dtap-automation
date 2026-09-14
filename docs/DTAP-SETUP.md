@@ -1,42 +1,71 @@
 # DTAP deployment POC
 
-This repository now contains a GitHub Actions promotion pipeline for the static site.
+This repository contains a GitHub Actions pipeline for Terraform and a static
+site deployed to Azure App Service. Workflow logic shared by environments is
+implemented in local composite actions and reusable workflow templates.
 
 ## Promotion flow
 
 ```text
-pull request -> CI and security checks
-develop      -> Development -> Test
-release/*    -> Acceptance (approval required)
-main         -> Production (approval required)
+pull request -> CI and security checks -> Terraform plan
+main         -> dev apply/build/deploy and prod apply/build/deploy
+             -> Development and Production environment gates
 ```
 
-The site is packaged once per commit. The same artifact is promoted to each environment; it is not rebuilt between stages.
+Pull requests also run the Issue Drift Check. The feature branch identifies
+the associated issue using `feature/<issue-number>-<short-name>`. The check
+fetches the issue, pull request metadata, changed-file patches, and final
+contents of changed files at the PR head before asking the configured
+OpenAI-compatible model whether the final repository state satisfies the
+issue.
+
+Each environment build creates a timestamped ZIP package, updates the site
+environment label from the GitHub environment variable `ENVIRONMENT`, and
+uploads the package to the private Azure Blob Storage `release` container.
+The corresponding deploy job downloads that package and deploys it to the
+environment's App Service.
 
 ## One-time GitHub setup
 
-1. In **Settings > Environments**, create `Development`, `Test`, `Acceptance`, and `Production`.
-2. Add required reviewers to `Acceptance` and `Production`.
-3. Restrict each environment to the appropriate branch pattern:
-   - `Development` and `Test`: `develop`
-   - `Acceptance`: `release/*`
-   - `Production`: `main`
-4. In **Settings > Pages**, set **Source** to **GitHub Actions**.
-5. Protect `develop` and `main` under **Settings > Rules > Rulesets**:
+1. In **Settings > Environments**, create `Development` and `Production`.
+2. Add required reviewers to `Production`; use branch restrictions suitable
+   for the release policy.
+3. Add these Azure OIDC secrets to each environment:
+   `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, and `AZURE_SUBSCRIPTION_ID`.
+4. Add these environment variables:
+   `AZURE_STORAGE_ACCOUNT`, `APP_SERVICE_NAME`, and `ENVIRONMENT`.
+   `APP_SERVICE_NAME` must identify the App Service for that environment.
+5. Protect `main` under **Settings > Rules > Rulesets**:
    - Require pull requests
    - Require approvals
    - Require `validate` and `workflow-security` checks
    - Require CODEOWNER review
    - Block force pushes
+6. Ensure the deployment identity has `Storage Blob Data Contributor` on the
+   application's `release` blob container.
+7. Configure the drift-check integration:
+   - Add `OPENAI_API_KEY` to GitHub Actions secrets.
+   - Add `OPENAI_API_URL` to GitHub Actions variables. This may be a
+     chat-completions URL, an OpenAI-compatible base URL, or an Azure OpenAI
+     resource URL.
+   - Keep feature branches in the
+     `feature/<issue-number>-<short-name>` format.
 
 ## Demo script
 
 1. Create a feature branch and open a pull request.
-2. Show validation, JavaScript syntax checking, secret scanning, and workflow scanning.
-3. Merge into `develop` and show automatic Development then Test artifact promotion.
-4. Create `release/1.0.0` and show the Acceptance job waiting for approval.
-5. Approve Acceptance, then merge the release into `main`.
-6. Show Production waiting for an authorized reviewer, then approve it to deploy GitHub Pages.
-7. Demonstrate rollback by manually redeploying a previous artifact run.
+2. Show the Issue Drift Check resolving the issue from the branch name,
+   reading the PR's changed files and final file contents, and returning its
+   alignment summary.
+3. Show validation, JavaScript syntax checking, secret scanning, and workflow scanning.
+4. Merge into `main` and show the Terraform plan/apply jobs using the
+   environment-specific `dev` and `prod` variable files.
+5. Show `dev-build` and `prod-build` creating and uploading packages to Blob
+   Storage.
+6. Show `dev-deploy` and `prod-deploy` downloading the packages and deploying
+   them to their App Service instances.
+7. Demonstrate the Production approval gate and redeploy a previous immutable
+   package when a rollback is required.
 
-The workflow promotes one immutable artifact through the DTAP stages and uses GitHub's OIDC-based Pages deployment. No deployment credentials are stored in the repository.
+The workflows use GitHub OIDC and environment-scoped configuration. No Azure
+credentials or storage keys are stored in the repository.
