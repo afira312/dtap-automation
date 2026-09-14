@@ -1,13 +1,14 @@
 - [DTAP Automation PoC](#dtap-automation-poc)
   - [Objectives](#objectives)
   - [Suggested branch strategy](#suggested-branch-strategy)
+  - [Issue drift check](#issue-drift-check)
   - [Documentation](#documentation)
   - [PoC boundary](#poc-boundary)
 
 # DTAP Automation PoC
 
 This repository is a proof of concept for a controlled, automated change
-process for a single-page web application.
+process for a single-page web application deployed to Azure App Service.
 
 ## Objectives
 
@@ -17,10 +18,13 @@ process for a single-page web application.
 - Open a pull request (PR) from the feature branch to `main`.
 - Run the test workflow on every feature-branch commit.
 - Require review and prevent direct commits to `main`.
-- On every approved merge to `main`, run the same tests and deploy to the
-  production environment.
-- Require the final approval through a protected GitHub environment before
-  deployment.
+- On every approved merge to `main`, apply the Terraform configuration and
+  deploy the site through the protected `Development` and `Production`
+  GitHub environments.
+- Store immutable site packages in the Azure Storage Account `release`
+  container and deploy them to App Service.
+- Require approval through the protected `Production` GitHub environment
+  before production changes are applied or deployed.
 - Keep the process fully automated; configuration is managed as code rather
   than through click-ops.
 
@@ -33,9 +37,11 @@ flowchart LR
     T -->|pass| PR[Pull request to main]
     PR --> R[Required review]
     R -->|approved| M[Merge to main]
-    M --> C[Test workflow]
-    C -->|pass| A[Production environment approval]
-    A --> D[Deploy to GitHub Pages]
+    M --> C[Terraform apply and site build]
+    C --> D[Development environment]
+    C --> P[Production environment]
+    D --> DA[Development App Service]
+    P --> PA[Production App Service]
 ```
 
 Rules:
@@ -46,17 +52,52 @@ Rules:
 3. Push commits only to the feature branch and open a PR to `main`.
 4. Require passing checks, a review, and CODEOWNER approval before merging.
 5. Protect `main` against direct pushes and force pushes.
-6. Configure the production environment with required reviewers. A merge
-   starts deployment only after that approval.
-7. Configure Github Action secrets for `Drift-Check`, add `OPENAI_API_KEY` as a secret
-8. Configure the Github Action variable `OPENAI_API_URL` for `Drift-Check`.
+6. Configure `Development` and `Production` GitHub environments. Add required
+   reviewers to `Production` and restrict the environments to the appropriate
+   deployment branches.
+7. Configure the Azure OIDC secrets (`AZURE_CLIENT_ID`,
+   `AZURE_TENANT_ID`, and `AZURE_SUBSCRIPTION_ID`) in each environment.
+8. Configure the environment variables `AZURE_STORAGE_ACCOUNT`,
+   `APP_SERVICE_NAME`, and `ENVIRONMENT`. The site build uses `ENVIRONMENT`
+   to update the environment label in `src/index.html`.
+9. Configure Github Action secrets for `Drift-Check`, add `OPENAI_API_KEY` as a secret
+10. Configure the Github Action variable `OPENAI_API_URL` for `Drift-Check`.
    This may be an OpenAI-compatible chat-completions URL or an Azure OpenAI
    resource URL such as `https://<resource>.openai.azure.com/`.
    The model is selected from the workflow input and defaults to `gpt-5.4-mini`;
    `gpt-5.4` and `claude-sonnet-5` are also available.
-9. The `Drift-Check` runs
+11. The `Drift-Check` runs
    on every PR commit and requires a branch name beginning with
    `feature/<issue-number>-`.
+
+## Issue drift check
+
+The `Drift-Check` workflow validates that a pull request implements the GitHub
+issue identified by its feature branch. Branches must use the
+`feature/<issue-number>-<short-name>` format; the workflow extracts the issue
+number from the branch name and fails early for other branch formats.
+
+The workflow invokes [`scripts/drift_check.py`](scripts/drift_check.py), which
+uses the GitHub API to retrieve:
+
+- The linked issue title and body.
+- The pull request title and body.
+- The pull request's changed-file patches.
+- The final contents of changed files at the pull request head commit.
+
+The script sends that evidence to an OpenAI-compatible chat-completions
+endpoint and requires a JSON response containing `aligned`, `missing`, and
+`summary`. It evaluates the final repository state, so requirements are not
+considered missing merely because the relevant line was unchanged in the PR.
+The check fails only when the response identifies a concrete, material
+omission or contradiction.
+
+The workflow runs automatically for opened, synchronized, reopened, and
+ready-for-review pull requests. It can also be started manually with a pull
+request number and one of the configured models. Configure
+`OPENAI_API_KEY` as a GitHub Actions secret and `OPENAI_API_URL` as a GitHub
+Actions variable. The model defaults to `gpt-5.4-mini` and can be overridden
+for manual runs.
 
 ```mermaid
 gitGraph
@@ -72,16 +113,18 @@ gitGraph
 
 ## Documentation
 
-- [Architecture summary](docs/architecture-summary.md) - two simple Azure
-  hosting alternatives.
+- [Architecture summary](docs/architecture-summary.md) - Azure App Service,
+  Blob Storage, and authentication architecture.
 - [Assumptions](docs/assumptions.md) - scope and organizational assumptions.
-- [DTAP setup](docs/DTAP-SETUP.md) - repository setup and the existing
-  environment-oriented workflow notes.
-- [Issue drift check workflow](.github/workflows/drift-check.yml) - validates
-  that a PR addresses its linked issue using an OpenAI-compatible endpoint.
+- [DTAP setup](docs/DTAP-SETUP.md) - repository setup, environment
+  configuration, and deployment workflow notes.
+- [Issue drift check workflow](.github/workflows/drift-check.yml) - runs the
+  automated issue/PR alignment check.
+- [Drift-check script](scripts/drift_check.py) - fetches issue, PR, patch, and
+  final-file evidence and evaluates it with the configured model.
 
 ## PoC boundary
 
-The process is the focus. The application is intentionally simple, and the
-deployment target can be GitHub Pages for the demo or one of the Azure
-alternatives described in the architecture summary.
+The process is the focus. The application is intentionally simple. The
+implemented deployment target is Azure App Service, with Azure Blob Storage
+used as the immutable package store.
