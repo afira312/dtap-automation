@@ -4,6 +4,7 @@
 | Name | Version |
 | ---- | ------- |
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.15.8, < 2.0.0 |
+| <a name="requirement_azapi"></a> [azapi](#requirement\_azapi) | ~> 2.11 |
 | <a name="requirement_azurerm"></a> [azurerm](#requirement\_azurerm) | ~> 4.0 |
 
 ## Providers
@@ -18,6 +19,7 @@
 | ---- | ------ | ------- |
 | <a name="module_app"></a> [app](#module\_app) | Azure/avm-res-web-site/azurerm | 0.22.0 |
 | <a name="module_asp"></a> [asp](#module\_asp) | Azure/avm-res-web-serverfarm/azurerm | 2.0.8 |
+| <a name="module_storage"></a> [storage](#module\_storage) | Azure/avm-res-storage-storageaccount/azurerm | 0.10.0 |
 
 ## Resources
 

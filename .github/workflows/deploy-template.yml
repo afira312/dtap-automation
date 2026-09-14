@@ -1,0 +1,50 @@
+name: Deploy site
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: GitHub environment containing deployment configuration
+        required: true
+        type: string
+      package_name:
+        description: Name of the ZIP package uploaded by the build workflow
+        required: true
+        type: string
+
+env:
+  AZURE_STORAGE_CONTAINER: release
+
+jobs:
+  deploy:
+    name: Deploy to ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    permissions:
+      id-token: write
+    steps:
+      - name: Azure login
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Download package from blob
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            az storage blob download \
+              --account-name "${{ vars.AZURE_STORAGE_ACCOUNT }}" \
+              --container-name "${{ env.AZURE_STORAGE_CONTAINER }}" \
+              --name "${{ inputs.package_name }}" \
+              --file "${{ inputs.package_name }}" \
+              --auth-mode login \
+              --overwrite
+
+      - name: Deploy to WebApp
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ vars.APP_SERVICE_NAME }}
+          package: ./${{ inputs.package_name }}
+          deployment-method: zip

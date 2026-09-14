@@ -1,5 +1,8 @@
 name: "Terraform Plan"
-run-name: Terraform Plan for (${{ inputs.environment || 'dev'}})
+run-name: >-
+  Terraform plan | ${{ inputs.environment || 'dev' }} | ${{ github.event_name == 'pull_request'
+    && format('PR #{0}', github.event.pull_request.number)
+    || github.event_name }}
 
 on:
   workflow_dispatch:

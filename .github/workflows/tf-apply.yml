@@ -1,5 +1,8 @@
 name: "Terraform Apply"
-run-name: Terraform Apply for (${{ inputs.environment || 'dev'}})
+run-name: >-
+  Terraform apply | ${{ inputs.environment || 'dev' }} | ${{ github.event_name == 'workflow_dispatch'
+    && 'manual'
+    || github.ref_name }}
 
 on:
   workflow_dispatch:

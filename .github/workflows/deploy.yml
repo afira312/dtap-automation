@@ -1,19 +1,14 @@
 name: Deploy DTAP application
+run-name: >-
+  Deploy | ${{ github.ref_name }} | ${{ github.event_name == 'workflow_dispatch'
+    && 'manual'
+    || 'merge' }}
 
 on:
   push:
     branches:
       - main
   workflow_dispatch:
-    inputs:
-      TF_ENVIRONMENT:
-        description: Environment to deploy
-        required: true
-        default: dev
-      APP_SERVICE_NAME:
-        description: Azure App Service name
-        required: true
-        default: ah-poc-dtap-dev-app
 
 permissions:
   contents: read
@@ -24,129 +19,43 @@ concurrency:
 
 jobs:
   dev-build:
-    name: dev-build
-    runs-on: ubuntu-latest
-    environment: Development
+    uses: ./.github/workflows/build-template.yml
     permissions:
+      contents: read
       id-token: write
-    env:
-      TF_ENVIRONMENT: dev
-    steps:
-      - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-
-      - name: Azure login
-        uses: azure/login@v3
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Update environment in site
-        env:
-          ENVIRONMENT: ${{ vars.ENVIRONMENT }}
-        run: sed -i "s/<span class=\"environment-tag\">[^<]*/<span class=\"environment-tag\">${ENVIRONMENT}/" src/index.html
-
-      - name: Upload to blob
-        uses: azure/cli@v2
-        with:
-          inlineScript: |
-            az storage blob upload-batch \
-              --account-name "${{ vars.AZURE_STORAGE_ACCOUNT }}" \
-              --destination '$web' \
-              --source ./src \
-              --auth-mode login \
-              --overwrite
-
-  prod-build:
-    name: prod-build
-    runs-on: ubuntu-latest
-    environment: Production
-    permissions:
-      id-token: write
-    env:
-      TF_ENVIRONMENT: prod
-    steps:
-      - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-
-      - name: Azure login
-        uses: azure/login@v3
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Update environment in site
-        env:
-          ENVIRONMENT: ${{ vars.ENVIRONMENT }}
-        run: sed -i "s/<span class=\"environment-tag\">[^<]*/<span class=\"environment-tag\">${ENVIRONMENT}/" src/index.html
-
-      - name: Upload to blob
-        uses: azure/cli@v2
-        with:
-          inlineScript: |
-            az storage blob upload-batch \
-              --account-name "${{ vars.AZURE_STORAGE_ACCOUNT }}" \
-              --destination '$web' \
-              --source ./src \
-              --auth-mode login \
-              --overwrite
+    with:
+      environment: Development
+      environment_code: dev
+    secrets: inherit
 
   dev-deploy:
-    name: dev-deploy
     needs: dev-build
-    runs-on: ubuntu-latest
-    environment: Development
+    uses: ./.github/workflows/deploy-template.yml
     permissions:
+      contents: read
       id-token: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+    with:
+      environment: Development
+      package_name: ${{ needs.dev-build.outputs.package_name }}
+    secrets: inherit
 
-      - name: Azure login
-        uses: azure/login@v3
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Update environment in site
-        env:
-          ENVIRONMENT: ${{ vars.ENVIRONMENT }}
-        run: sed -i "s/<span class=\"environment-tag\">[^<]*/<span class=\"environment-tag\">${ENVIRONMENT}/" src/index.html
-
-      - name: Deploy to AppService
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: ${{ inputs.APP_SERVICE_NAME || 'ah-poc-dtap-dev-app' }}
-          package: ./src
+  prod-build:
+    uses: ./.github/workflows/build-template.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      environment: Production
+      environment_code: prod
+    secrets: inherit
 
   prod-deploy:
-    name: prod-deploy
     needs: prod-build
-    runs-on: ubuntu-latest
-    environment: Production
+    uses: ./.github/workflows/deploy-template.yml
     permissions:
+      contents: read
       id-token: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-
-      - name: Azure login
-        uses: azure/login@v3
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Update environment in site
-        env:
-          ENVIRONMENT: ${{ vars.ENVIRONMENT }}
-        run: sed -i "s/<span class=\"environment-tag\">[^<]*/<span class=\"environment-tag\">${ENVIRONMENT}/" src/index.html
-
-      - name: Deploy to AppService
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: ${{ inputs.APP_SERVICE_NAME && replace(inputs.APP_SERVICE_NAME, 'dev', 'prod') || 'ah-poc-dtap-prod-app' }}
-          package: ./src
+    with:
+      environment: Production
+      package_name: ${{ needs.prod-build.outputs.package_name }}
+    secrets: inherit

@@ -1,4 +1,8 @@
 name: Issue drift check
+run-name: >-
+  Drift check | ${{ github.event.pull_request
+    && format('PR #{0}', github.event.pull_request.number)
+    || format('manual PR #{0}', inputs.pull_request_number) }}
 
 on:
   pull_request:
