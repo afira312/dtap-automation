@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       environment_code:
-        description: Short environment code used in the package name
+        description: Short environment code used in the package name; production builds should follow deployment of development
         required: true
         type: string
     outputs:
