@@ -25,7 +25,7 @@ concurrency:
 
 jobs:
   dev:
-    uses: ./.github/workflows/terraform-apply-template.yml
+    uses: $/.github/workflows/terraform-apply-template.yml
     permissions:
       contents: read
       id-token: write
@@ -37,7 +37,7 @@ jobs:
 
   prod:
     needs: dev
-    uses: ./.github/workflows/terraform-apply-template.yml
+    uses: $/.github/workflows/terraform-apply-template.yml
     permissions:
       contents: read
       id-token: write

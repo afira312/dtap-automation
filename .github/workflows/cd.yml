@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   dev-build:
-    uses: ./.github/workflows/build-template.yml
+    uses: $/.github/workflows/build-template.yml
     permissions:
       contents: read
       id-token: write
@@ -30,7 +30,7 @@ jobs:
 
   dev-deploy:
     needs: dev-build
-    uses: ./.github/workflows/deploy-template.yml
+    uses: $/.github/workflows/deploy-template.yml
     permissions:
       contents: read
       id-token: write
@@ -41,7 +41,7 @@ jobs:
 
   prod-build:
     needs: dev-deploy
-    uses: ./.github/workflows/build-template.yml
+    uses: $/.github/workflows/build-template.yml
     permissions:
       contents: read
       id-token: write
@@ -52,7 +52,7 @@ jobs:
 
   prod-deploy:
     needs: prod-build
-    uses: ./.github/workflows/deploy-template.yml
+    uses: $/.github/workflows/deploy-template.yml
     permissions:
       contents: read
       id-token: write

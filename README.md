@@ -1,167 +1,217 @@
 - [DTAP Automation PoC](#dtap-automation-poc)
-  - [Objectives](#objectives)
-  - [Suggested branch strategy](#suggested-branch-strategy)
-  - [Release flows](#release-flows)
-  - [Issue drift check](#issue-drift-check)
-  - [Documentation](#documentation)
-  - [PoC boundary](#poc-boundary)
+  - [Start here](#start-here)
+  - [What this repository demonstrates](#what-this-repository-demonstrates)
+  - [Repository map](#repository-map)
+  - [Delivery lifecycle](#delivery-lifecycle)
+  - [Pull-request checks](#pull-request-checks)
+  - [Infrastructure workflow](#infrastructure-workflow)
+  - [Application release](#application-release)
+  - [Required GitHub configuration](#required-github-configuration)
+  - [Scope and limitations](#scope-and-limitations)
+  - [Documentation index](#documentation-index)
+
 
 # DTAP Automation PoC
 
-This repository is a proof of concept for a controlled, automated change
-process for a single-page web application deployed to Azure App Service.
+This repository is a proof of concept for a controlled, automated release
+process for a static single-page application (SPA). It combines GitHub issues
+and pull requests, GitHub Actions, Terraform, Azure Blob Storage, and Azure
+App Service.
 
-## Objectives
+## Start here
 
-- Use `main` as the origin.
-- Track every change with a GitHub issue. (Change Management)
-- Implement each issue on a short-lived feature branch.
-- Open a pull request (PR) from the feature branch to `main`.
-- Run the test workflow on every feature-branch commit.
-- Require review and prevent direct commits to `main`.
-- On every approved merge to `main`, apply the Terraform configuration and
-  deploy the site through the protected `Development` and `Production`
-  GitHub environments.
-- Store immutable site packages in the Azure Storage Account `release`
-  container and deploy them to App Service.
-- Require approval through the protected `Production` GitHub environment
-  before production changes are applied or deployed.
-- Keep the process fully automated; configuration is managed as code rather
-  than through click-ops.
+| If you want to...                                   | Read                                                 |
+| --------------------------------------------------- | ---------------------------------------------------- |
+| Understand exactly what happens during a release    | [Application release flow](docs/release-flow.md)     |
+| Set up the repository and GitHub environments       | [DTAP setup](docs/DTAP-SETUP.md)                     |
+| Understand the Azure architecture and identity flow | [Architecture summary](docs/architecture-summary.md) |
+| Understand the scope and assumptions of this PoC    | [Assumptions](docs/assumptions.md)                   |
+| Inspect the deployed SPA                            | [`src/`](src/)                                       |
+| Inspect the infrastructure definition               | [`iac/`](iac/)                                       |
 
-## Suggested branch strategy
+The most important release document is
+[docs/release-flow.md](docs/release-flow.md). It contains the detailed
+diagrams and step-by-step behavior for build, Blob Storage upload, package
+download, and App Service deployment.
 
-```mermaid
-flowchart LR
-    I[GitHub issue] --> F[feature/<issue>-short-name]
-    F -->|commit| T[Test workflow]
-    T -->|pass| PR[Pull request to main]
-    PR --> R[Required review]
-    R -->|approved| M[Merge to main]
-    M --> C[Ordered release workflows]
-    C --> D[Development environment]
-    D --> P[Production environment]
-    D --> DA[Development App Service]
-    P --> PA[Production App Service]
-```
+## What this repository demonstrates
 
-Rules:
+- Trunk-based delivery through protected `main`.
+- Issue-driven feature branches named
+  `feature/<issue-number>-<short-name>`.
+- Pull-request validation, secret scanning, and workflow security scanning.
+- Automated verification that a pull request satisfies its linked issue.
+- Terraform plan and apply for Development and Production infrastructure.
+- Environment-specific SPA packages stored in a private Azure Blob Storage
+  `release` container.
+- Ordered application promotion:
+  Development build -> Development deploy -> Production build ->
+  Production deploy.
+- Azure authentication from GitHub Actions using OpenID Connect (OIDC)
+  instead of stored Azure credentials.
+- Production approval through the protected GitHub `Production` environment.
 
-1. Create an issue before making a change.
-2. Create a feature branch from `main`, preferably named
-   `feature/<issue-number>-<short-name>`.
-3. Push commits only to the feature branch and open a PR to `main`.
-4. Require passing checks, a review, and CODEOWNER approval before merging.
-5. Protect `main` against direct pushes and force pushes.
-6. Configure `Development` and `Production` GitHub environments. Add required
-   reviewers to `Production` and restrict the environments to the appropriate
-   deployment branches.
-7. Configure the Azure OIDC secrets (`AZURE_CLIENT_ID`,
-   `AZURE_TENANT_ID`, and `AZURE_SUBSCRIPTION_ID`) in each environment.
-8. Configure the environment variables `AZURE_STORAGE_ACCOUNT`,
-   `APP_SERVICE_NAME`, and `ENVIRONMENT`. The site build uses `ENVIRONMENT`
-   to update the environment label in `src/index.html`.
-9. Configure Github Action secrets for `Drift-Check`, add `OPENAI_API_KEY` as a secret
-10. Configure the Github Action variable `OPENAI_API_URL` for `Drift-Check`.
-   This may be an OpenAI-compatible chat-completions URL or an Azure OpenAI
-   resource URL such as `https://<resource>.openai.azure.com/`.
-   The model is selected from the workflow input and defaults to `gpt-5.4-mini`;
-   `gpt-5.4` and `claude-sonnet-5` are also available.
-11. The `Drift-Check` runs
-   on every PR commit and requires a branch name beginning with
-   `feature/<issue-number>-`.
+This is a process-focused PoC. The application itself is intentionally a
+small static site.
 
-## Release flows
+## Repository map
 
-Both release workflows promote from Development to Production. Production
-does not start until the Development stage has completed successfully. The
-Production GitHub environment can add its required-reviewer approval as an
-additional gate.
+| Path                                                                                               | Purpose                                                                                    |
+| -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| [`src/`](src/)                                                                                     | Static SPA source: `index.html`, `styles.css`, and `script.js`.                            |
+| [`iac/`](iac/)                                                                                     | Root Terraform configuration, environment backends/variables, and the reusable SPA module. |
+| [`scripts/drift_check.py`](scripts/drift_check.py)                                                 | Collects issue, PR, patch, and final-file evidence for the issue drift check.              |
+| [`.github/workflows/ci.yml`](.github/workflows/ci.yml)                                             | Validates site files and JavaScript, scans for secrets, and scans workflows.               |
+| [`.github/workflows/drift-check.yml`](.github/workflows/drift-check.yml)                           | Checks whether a pull request implements its linked issue.                                 |
+| [`.github/workflows/cd.yml`](.github/workflows/cd.yml)                                             | Application release entry workflow.                                                        |
+| [`.github/workflows/build-template.yml`](.github/workflows/build-template.yml)                     | Reusable environment-specific build and Blob Storage upload workflow.                      |
+| [`.github/workflows/deploy-template.yml`](.github/workflows/deploy-template.yml)                   | Reusable Blob Storage download and App Service deployment workflow.                        |
+| [`.github/workflows/tf-plan.yml`](.github/workflows/tf-plan.yml)                                   | Terraform plan entry workflow for Development and Production.                              |
+| [`.github/workflows/tf-apply.yml`](.github/workflows/tf-apply.yml)                                 | Ordered Terraform apply entry workflow.                                                    |
+| [`.github/workflows/terraform-plan-template.yml`](.github/workflows/terraform-plan-template.yml)   | Reusable Terraform plan workflow.                                                          |
+| [`.github/workflows/terraform-apply-template.yml`](.github/workflows/terraform-apply-template.yml) | Reusable Terraform apply workflow.                                                         |
+| [`docs/`](docs/)                                                                                   | Setup, architecture, assumptions, and detailed release documentation.                      |
 
-Terraform infrastructure promotion:
+## Delivery lifecycle
 
 ```mermaid
 flowchart LR
-    TF[tf-apply.yml] --> DEV[dev apply]
-    DEV -->|success| PROD[prod apply]
+    ISSUE[GitHub issue] --> BRANCH["feature/<issue-number>-<short-name>"]
+    BRANCH --> PR[Pull request to main]
+    PR --> CHECKS[CI, security, Terraform plan, issue drift check]
+    CHECKS --> REVIEW[Required review and CODEOWNER approval]
+    REVIEW --> MERGE[Merge to protected main]
+    MERGE --> INFRA[Terraform apply]
+    MERGE --> APP[Application release]
+    INFRA --> DEVINFRA[Development infrastructure]
+    DEVINFRA -->|success| PRODINFRA[Production infrastructure]
+    APP --> DEVAPP[Development build and deploy]
+    DEVAPP -->|success| PRODAPP[Production build and deploy]
 ```
 
-Application continuous deployment:
+There are no long-lived `dev` or `prod` branches. GitHub environments provide
+deployment isolation and approval gates, while workflow dependencies enforce
+the promotion order.
+
+## Pull-request checks
+
+The [CI workflow](.github/workflows/ci.yml) runs for pull requests to `main`
+and pushes to `main`. It:
+
+1. Checks that the required SPA files exist and that `index.html` references
+   the JavaScript file.
+2. Checks JavaScript syntax with `node --check`.
+3. Scans for accidentally committed secrets with Gitleaks.
+4. Scans GitHub Actions workflows with Zizmor.
+5. Requires pull requests to originate from a `feature/*` branch.
+
+The [issue drift check](.github/workflows/drift-check.yml) runs for opened,
+synchronized, reopened, and ready-for-review pull requests. It extracts the
+issue number from the feature branch, retrieves issue and pull-request
+evidence from GitHub, and asks the configured OpenAI-compatible endpoint
+whether the final repository state satisfies the issue. A non-aligned result
+fails the check.
+
+The drift check can also be started manually with a pull request number and
+one of the configured models. It requires `OPENAI_API_KEY` as a secret and
+`OPENAI_API_URL` as a GitHub Actions variable.
+
+## Infrastructure workflow
+
+Terraform is split into entry workflows and reusable templates:
 
 ```mermaid
 flowchart LR
-    CD[cd.yml] --> DB[dev-build]
-    DB --> DD[dev-deploy]
-    DD -->|success| PB[prod-build]
-    PB --> PD[prod-deploy]
+    PLAN[tf-plan.yml] --> PLANDEV[Development plan]
+    PLAN --> PLANPROD[Production plan]
+    APPLY[tf-apply.yml] --> APPLYDEV[Development apply]
+    APPLYDEV -->|success| APPLYPROD[Production apply]
 ```
 
-The branch strategy is intentionally trunk-based: work starts on a
-short-lived `feature/<issue-number>-<short-name>` branch, checks run on the
-pull request, and only an approved merge to protected `main` triggers these
-promotion flows. There are no separate long-lived `dev` or `prod` branches;
-the GitHub environments provide deployment isolation and the workflow
-dependencies provide promotion order.
+The root Terraform configuration in [`iac/`](iac/) instantiates the SPA
+module for the selected environment. The module provisions:
 
-## Issue drift check
+- An Azure resource group.
+- An Azure App Service plan.
+- An Azure App Service for the SPA.
+- An application storage account with a private `release` container.
+- Blob data permissions for the deployment identity.
 
-The `Drift-Check` workflow validates that a pull request implements the GitHub
-issue identified by its feature branch. Branches must use the
-`feature/<issue-number>-<short-name>` format; the workflow extracts the issue
-number from the branch name and fails early for other branch formats.
+Terraform state is stored remotely in Azure and is not committed to Git.
+See [`iac/README.md`](iac/README.md) for generated Terraform module details.
 
-The workflow invokes [`scripts/drift_check.py`](scripts/drift_check.py), which
-uses the GitHub API to retrieve:
+## Application release
 
-- The linked issue title and body.
-- The pull request title and body.
-- The pull request's changed-file patches.
-- The final contents of changed files at the pull request head commit.
-
-The script sends that evidence to an OpenAI-compatible chat-completions
-endpoint and requires a JSON response containing `aligned`, `missing`, and
-`summary`. It evaluates the final repository state, so requirements are not
-considered missing merely because the relevant line was unchanged in the PR.
-The check fails only when the response identifies a concrete, material
-omission or contradiction. Each run also publishes an action summary: aligned
-checks show a short rationale, while drifted checks show numbered, actionable
-updates and the overall summary.
-
-The workflow runs automatically for opened, synchronized, reopened, and
-ready-for-review pull requests. It can also be started manually with a pull
-request number and one of the configured models. Configure
-`OPENAI_API_KEY` as a GitHub Actions secret and `OPENAI_API_URL` as a GitHub
-Actions variable. The model defaults to `gpt-5.4-mini` and can be overridden
-for manual runs.
+The [application release workflow](.github/workflows/cd.yml) runs on pushes to
+`main` and manual dispatches:
 
 ```mermaid
-gitGraph
-   commit id: "main"
-   branch feature/42-example
-   checkout feature/42-example
-   commit id: "change"
-   commit id: "tests pass"
-   checkout main
-   merge feature/42-example id: "approved PR"
-   commit id: "deploy"
+flowchart LR
+    START[Push to main or manual dispatch]
+    START --> DB["dev-build<br/>checkout, customize, ZIP, upload"]
+    DB --> DD["dev-deploy<br/>download ZIP, deploy App Service"]
+    DD -->|success| PB["prod-build<br/>checkout, customize, ZIP, upload"]
+    PB --> PD["prod-deploy<br/>download ZIP, deploy App Service"]
 ```
 
-## Documentation
+Each build:
 
-- [Architecture summary](docs/architecture-summary.md) - Azure App Service,
-  Blob Storage, and authentication architecture.
-- [Assumptions](docs/assumptions.md) - scope and organizational assumptions.
-- [DTAP setup](docs/DTAP-SETUP.md) - repository setup, environment
-  configuration, and deployment workflow notes.
-- [Continuous deployment workflow](.github/workflows/cd.yml) - builds and
-  deploys the site to the Development and Production environments.
-- [Issue drift check workflow](.github/workflows/drift-check.yml) - runs the
-  automated issue/PR alignment check.
-- [Drift-check script](scripts/drift_check.py) - fetches issue, PR, patch, and
-  final-file evidence and evaluates it with the configured model.
+1. Checks out the repository.
+2. Updates the existing `src/index.html` environment label from the
+   environment's `ENVIRONMENT` variable.
+3. Creates a timestamped `site-<environment>-<timestamp>.zip` from `src/`.
+4. Logs in to Azure with OIDC.
+5. Uploads the ZIP to the private Blob Storage `release` container.
 
-## PoC boundary
+Each deploy:
 
-The process is the focus. The application is intentionally simple. The
-implemented deployment target is Azure App Service, with Azure Blob Storage
-used as the immutable package store.
+1. Logs in to Azure with OIDC.
+2. Validates the package filename.
+3. Downloads the exact ZIP named by the preceding build.
+4. Deploys it to the environment's App Service with
+   `azure/webapps-deploy`.
+
+The ZIP is handed from build to deploy through its filename and Blob Storage;
+it is not passed as a GitHub Actions artifact. Production starts only after
+the complete Development build and deployment succeeds. The detailed
+step-by-step diagrams, artifact lifecycle, configuration, and rollback notes
+are in [docs/release-flow.md](docs/release-flow.md).
+
+## Required GitHub configuration
+
+Create the `Development` and `Production` GitHub environments. Each
+environment needs:
+
+- OIDC secrets: `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, and
+  `AZURE_SUBSCRIPTION_ID`.
+- Variables: `AZURE_STORAGE_ACCOUNT`, `APP_SERVICE_NAME`, and `ENVIRONMENT`.
+
+Configure required reviewers for `Production` if production approval is
+required. The deployment identity must have `Storage Blob Data Contributor`
+access to the application storage account's private `release` container.
+
+Protect `main` with pull requests, required approvals, required status checks,
+CODEOWNER review, and disabled force pushes.
+
+For the complete setup procedure, see
+[docs/DTAP-SETUP.md](docs/DTAP-SETUP.md).
+
+## Scope and limitations
+
+- The intended lifecycle has Dev, Test, QA, pre-production, and Production
+  stages, but this PoC implements only `dev -> prod`.
+- The application is a simple static SPA; the release process is the primary
+  subject of the PoC.
+- The current release entry workflow creates a new package on every run. It
+  does not yet expose a manual package-selection input for rollback, although
+  timestamped packages remain in Blob Storage.
+
+See [docs/assumptions.md](docs/assumptions.md) for the full assumptions list.
+
+## Documentation index
+
+- [Application release flow](docs/release-flow.md)
+- [DTAP setup](docs/DTAP-SETUP.md)
+- [Architecture summary](docs/architecture-summary.md)
+- [Assumptions](docs/assumptions.md)
+- [Terraform module documentation](iac/README.md)
