@@ -32,7 +32,7 @@ jobs:
     permissions:
       contents: read #read repository content
       id-token: write #write id tokens
-    uses: ./.github/workflows/terraform-plan-template.yml
+    uses: $/.github/workflows/terraform-plan-template.yml
     with:
       environment: dev
       instance_directory: ${{ inputs.instanceDirectory || './iac' }}
@@ -42,7 +42,7 @@ jobs:
     permissions:
       contents: read #read repository content
       id-token: write #write id tokens
-    uses: ./.github/workflows/terraform-plan-template.yml
+    uses: $/.github/workflows/terraform-plan-template.yml
     with:
       environment: prod
       instance_directory: ${{ inputs.instanceDirectory || './iac' }}
