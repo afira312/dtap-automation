@@ -1,4 +1,4 @@
-location = "francecentral"
+location = "swedencentral"
 resourcePrefix = "ah-poc-dtap-prod"
 environment = "prod"
-subscription_id="8486ac29-bcbd-4691-9ff6-52a901335eb0"
+subscription_id="de476170-ae21-4680-b339-2276fa03d958"
