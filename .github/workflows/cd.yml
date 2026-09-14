@@ -40,6 +40,7 @@ jobs:
     secrets: inherit
 
   prod-build:
+    needs: dev-deploy
     uses: ./.github/workflows/build-template.yml
     permissions:
       contents: read

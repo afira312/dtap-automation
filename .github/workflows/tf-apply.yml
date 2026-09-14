@@ -36,6 +36,7 @@ jobs:
     secrets: inherit
 
   prod:
+    needs: dev
     uses: ./.github/workflows/terraform-apply-template.yml
     permissions:
       contents: read

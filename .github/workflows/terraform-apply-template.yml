@@ -13,7 +13,7 @@ on:
         default: ./iac
         type: string
       github_environment:
-        description: GitHub environment containing deployment credentials
+        description: GitHub environment containing deployment credentials; the caller controls promotion order
         required: true
         type: string
 

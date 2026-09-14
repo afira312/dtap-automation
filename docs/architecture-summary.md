@@ -46,3 +46,26 @@ packages use the private `release` container. The deployment identity receives
 `Storage Blob Data Contributor` on the `release` container so the workflows can
 upload and download packages without storage keys. State is not committed to
 Git.
+
+## Release orchestration
+
+The entry workflows enforce promotion order after a merge to `main`:
+
+```mermaid
+flowchart LR
+    TA[tf-apply.yml] --> TD[dev apply]
+    TD -->|success| TP[prod apply]
+```
+
+```mermaid
+flowchart LR
+    CD[cd.yml] --> DB[dev-build]
+    DB --> DD[dev-deploy]
+    DD -->|success| PB[prod-build]
+    PB --> PD[prod-deploy]
+```
+
+The reusable Terraform, build, and deploy workflows provide the
+environment-specific implementation. The entry workflows provide the
+promotion dependencies. This keeps templates reusable while ensuring that
+Production cannot run in parallel with, or get ahead of, Development.

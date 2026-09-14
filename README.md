@@ -1,6 +1,7 @@
 - [DTAP Automation PoC](#dtap-automation-poc)
   - [Objectives](#objectives)
   - [Suggested branch strategy](#suggested-branch-strategy)
+  - [Release flows](#release-flows)
   - [Issue drift check](#issue-drift-check)
   - [Documentation](#documentation)
   - [PoC boundary](#poc-boundary)
@@ -37,9 +38,9 @@ flowchart LR
     T -->|pass| PR[Pull request to main]
     PR --> R[Required review]
     R -->|approved| M[Merge to main]
-    M --> C[Terraform apply and site build]
+    M --> C[Ordered release workflows]
     C --> D[Development environment]
-    C --> P[Production environment]
+    D --> P[Production environment]
     D --> DA[Development App Service]
     P --> PA[Production App Service]
 ```
@@ -70,6 +71,38 @@ Rules:
    on every PR commit and requires a branch name beginning with
    `feature/<issue-number>-`.
 
+## Release flows
+
+Both release workflows promote from Development to Production. Production
+does not start until the Development stage has completed successfully. The
+Production GitHub environment can add its required-reviewer approval as an
+additional gate.
+
+Terraform infrastructure promotion:
+
+```mermaid
+flowchart LR
+    TF[tf-apply.yml] --> DEV[dev apply]
+    DEV -->|success| PROD[prod apply]
+```
+
+Application continuous deployment:
+
+```mermaid
+flowchart LR
+    CD[cd.yml] --> DB[dev-build]
+    DB --> DD[dev-deploy]
+    DD -->|success| PB[prod-build]
+    PB --> PD[prod-deploy]
+```
+
+The branch strategy is intentionally trunk-based: work starts on a
+short-lived `feature/<issue-number>-<short-name>` branch, checks run on the
+pull request, and only an approved merge to protected `main` triggers these
+promotion flows. There are no separate long-lived `dev` or `prod` branches;
+the GitHub environments provide deployment isolation and the workflow
+dependencies provide promotion order.
+
 ## Issue drift check
 
 The `Drift-Check` workflow validates that a pull request implements the GitHub
@@ -90,7 +123,9 @@ endpoint and requires a JSON response containing `aligned`, `missing`, and
 `summary`. It evaluates the final repository state, so requirements are not
 considered missing merely because the relevant line was unchanged in the PR.
 The check fails only when the response identifies a concrete, material
-omission or contradiction.
+omission or contradiction. Each run also publishes an action summary: aligned
+checks show a short rationale, while drifted checks show numbered, actionable
+updates and the overall summary.
 
 The workflow runs automatically for opened, synchronized, reopened, and
 ready-for-review pull requests. It can also be started manually with a pull

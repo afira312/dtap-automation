@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       package_name:
-        description: Name of the ZIP package uploaded by the build workflow
+        description: Name of the ZIP package uploaded by the preceding build workflow
         required: true
         type: string
 

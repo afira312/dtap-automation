@@ -21,11 +21,34 @@ local Terraform composite actions for the Terraform commands.
 
 ## Promotion flow
 
-```text
-pull request -> CI and security checks -> Terraform plan
-main         -> dev apply/build/deploy and prod apply/build/deploy
-             -> Development and Production environment gates
+Pull requests run CI, security checks, Terraform plan, and the Issue Drift
+Check. A merge to protected `main` starts the two ordered release flows:
+
+```mermaid
+flowchart LR
+    MAIN[Merge to main] --> TFDEV[tf-apply: dev]
+    TFDEV -->|success| TFPROD[tf-apply: prod]
 ```
+
+```mermaid
+flowchart LR
+    MAIN[Merge to main] --> DB[cd: dev-build]
+    DB --> DD[dev-deploy]
+    DD -->|success| PB[prod-build]
+    PB --> PD[prod-deploy]
+```
+
+The Terraform flow applies Development before Production. The application
+flow builds and deploys Development before building and deploying Production.
+The Production GitHub environment remains the approval gate for production
+operations. These dependencies prevent the two environments from running in
+parallel.
+
+The branch strategy is trunk-based: create
+`feature/<issue-number>-<short-name>` from `main`, open a pull request, pass
+the required checks and reviews, then merge to protected `main`. There are no
+long-lived environment branches; `Development` and `Production` GitHub
+environments provide the release boundaries.
 
 Pull requests also run the Issue Drift Check. The feature branch identifies
 the associated issue using `feature/<issue-number>-<short-name>`. The check
@@ -75,10 +98,10 @@ environment's App Service.
 3. Show validation, JavaScript syntax checking, secret scanning, and workflow scanning.
 4. Merge into `main` and show the Terraform plan/apply jobs using the
    environment-specific `dev` and `prod` variable files.
-5. Show `dev-build` and `prod-build` creating and uploading packages to Blob
-   Storage.
-6. Show `dev-deploy` and `prod-deploy` downloading the packages and deploying
-   them to their App Service instances.
+5. Show `dev-build` and `dev-deploy` creating, uploading, downloading, and
+   deploying the Development package.
+6. Show `prod-build` and `prod-deploy` doing the same for Production only
+   after the Development deployment succeeds.
 7. Demonstrate the Production approval gate and redeploy a previous immutable
    package when a rollback is required.
 
@@ -88,5 +111,5 @@ credentials or storage keys are stored in the repository.
 The Terraform plan workflow can also be started manually with an optional
 working directory and a selected `dev` or `prod` environment. The Terraform
 apply workflow can be started manually with an optional working directory;
-it applies both `dev` and `prod` through their corresponding GitHub
+it applies `dev` first and then `prod` through their corresponding GitHub
 environments.
