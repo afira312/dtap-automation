@@ -90,11 +90,15 @@ Application continuous deployment:
 
 ```mermaid
 flowchart LR
-    CD[cd.yml] --> DB[dev-build]
-    DB --> DD[dev-deploy]
-    DD -->|success| PB[prod-build]
-    PB --> PD[prod-deploy]
+    CD["cd.yml"] --> DB["dev-build<br/>checkout, customize, ZIP, upload"]
+    DB --> DD["dev-deploy<br/>download ZIP, deploy App Service"]
+    DD -->|success| PB["prod-build<br/>checkout, customize, ZIP, upload"]
+    PB --> PD["prod-deploy<br/>download ZIP, deploy App Service"]
 ```
+
+The detailed step-by-step diagram, artifact lifecycle, Azure resource flow,
+and rollback notes are documented in the
+[application release flow](docs/release-flow.md).
 
 The branch strategy is intentionally trunk-based: work starts on a
 short-lived `feature/<issue-number>-<short-name>` branch, checks run on the
@@ -153,6 +157,8 @@ gitGraph
 - [Assumptions](docs/assumptions.md) - scope and organizational assumptions.
 - [DTAP setup](docs/DTAP-SETUP.md) - repository setup, environment
   configuration, and deployment workflow notes.
+- [Application release flow](docs/release-flow.md) - detailed build, artifact,
+  Blob Storage, deployment, and promotion diagrams.
 - [Continuous deployment workflow](.github/workflows/cd.yml) - builds and
   deploys the site to the Development and Production environments.
 - [Issue drift check workflow](.github/workflows/drift-check.yml) - runs the

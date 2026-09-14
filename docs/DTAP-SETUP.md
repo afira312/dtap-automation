@@ -63,6 +63,9 @@ uploads the package to the private Azure Blob Storage `release` container.
 The corresponding deploy job downloads that package and deploys it to the
 environment's App Service.
 
+For the complete release diagram and the individual build/deploy steps, see
+the [application release flow](release-flow.md).
+
 ## One-time GitHub setup
 
 1. In **Settings > Environments**, create `Development` and `Production`.
