@@ -123,7 +123,9 @@ endpoint and requires a JSON response containing `aligned`, `missing`, and
 `summary`. It evaluates the final repository state, so requirements are not
 considered missing merely because the relevant line was unchanged in the PR.
 The check fails only when the response identifies a concrete, material
-omission or contradiction.
+omission or contradiction. Each run also publishes an action summary: aligned
+checks show a short rationale, while drifted checks show numbered, actionable
+updates and the overall summary.
 
 The workflow runs automatically for opened, synchronized, reopened, and
 ready-for-review pull requests. It can also be started manually with a pull

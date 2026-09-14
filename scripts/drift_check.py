@@ -151,7 +151,9 @@ Rules:
 - Do not invent requirements. Only judge what is explicitly described or implied by the issue.
 - If the PR fully satisfies the issue, set aligned=true and missing=[].
 - If the PR is missing work, set aligned=false and list the concrete missing items.
-- Keep summary brief but specific.
+- For aligned=true, keep summary to one short sentence explaining why the requirements are met.
+- For aligned=false, list missing items as actionable updates, one requirement per item, ordered by importance.
+- Keep every missing item readable without requiring the reviewer to inspect the logs.
 
 Issue title:
 {issue_title}
@@ -207,7 +209,9 @@ def call_openai(prompt: str, model: str, api_url: str, api_key: str) -> dict[str
                     "Return JSON only with keys aligned (boolean), missing (array of strings), summary (string). "
                     "Be pragmatic rather than legalistic: mark aligned=false only for clear, material omissions "
                     "or contradictions in the final repository state. Do not fail a PR because it uses an "
-                    "equivalent implementation or a reasonable alternative input interface."
+                    "equivalent implementation or a reasonable alternative input interface. For an aligned result, "
+                    "make summary one short sentence. For an unaligned result, make each missing item an actionable "
+                    "update that can be shown as a numbered list."
                 ),
             },
             {"role": "user", "content": prompt},
@@ -275,6 +279,48 @@ def validate_environment() -> tuple[str, str, str]:
     return api_key, api_url, model
 
 
+def as_strings(value: Any) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [item.strip() for item in value if isinstance(item, str) and item.strip()]
+
+
+def write_github_summary(
+    *,
+    aligned: bool,
+    missing: list[str],
+    summary: str,
+    issue_number: int,
+    pr_number: int,
+) -> None:
+    summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+    if not summary_path:
+        return
+
+    status = "Aligned" if aligned else "Updates required"
+    status_marker = "PASS" if aligned else "FAIL"
+    lines = [
+        "## Issue / PR drift check",
+        "",
+        f"**[{status_marker}] {status}** - Issue #{issue_number} - PR #{pr_number}",
+        "",
+    ]
+
+    if aligned:
+        lines.extend(["**How it meets the requirements**", "", summary.strip() or "Requirements are met."])
+    else:
+        lines.extend(["**What needs to be updated**", ""])
+        if missing:
+            lines.extend(f"{index}. {item}" for index, item in enumerate(missing, start=1))
+        else:
+            lines.append("The check found drift, but did not return specific missing requirements.")
+        if summary.strip():
+            lines.extend(["", f"**Summary:** {summary.strip()}"])
+
+    with open(summary_path, "a", encoding="utf-8") as output:
+        output.write("\n".join(lines) + "\n")
+
+
 def main() -> int:
     args = parse_args()
     repo = resolve_repo(args.repo)
@@ -296,10 +342,18 @@ def main() -> int:
         return 1
 
     aligned = bool(result.get("aligned", False))
-    missing = result.get("missing", []) or []
-    summary = result.get("summary", "No summary returned.")
+    missing = as_strings(result.get("missing"))
+    summary_value = result.get("summary", "No summary returned.")
+    summary = summary_value if isinstance(summary_value, str) else str(summary_value)
 
     print(json.dumps({"aligned": aligned, "missing": missing, "summary": summary}, indent=2))
+    write_github_summary(
+        aligned=aligned,
+        missing=missing,
+        summary=summary,
+        issue_number=args.issue_number,
+        pr_number=args.pr_number,
+    )
     return 0 if aligned else 1
 
 
