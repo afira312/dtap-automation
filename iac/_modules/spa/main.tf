@@ -34,6 +34,9 @@ module "storage" {
   account_tier                    = "Standard"
   allow_nested_items_to_be_public = false
   public_network_access_enabled   = true
+  network_rules = {
+    default_action = "Allow"
+  }
   containers = {
     release = {
       name          = "release"

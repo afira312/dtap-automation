@@ -11,10 +11,6 @@ on:
         description: 'Terraform instance directory for single-page application'
         required: true
         default: './iac'
-      environment:
-        description: 'Environment (dev/prod)'
-        required: true
-        default: 'dev'
 
   pull_request:
     branches:
@@ -28,16 +24,26 @@ permissions:
   contents: read
 
 concurrency:
-  group: tfplan-${{ inputs.environment || 'dev' }}
+  group: tfplan-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  plan:
+  dev-plan:
     permissions:
-      contents: read
-      id-token: write
+      contents: read #read repository content
+      id-token: write #write id tokens
     uses: ./.github/workflows/terraform-plan-template.yml
     with:
-      environment: ${{ inputs.environment || 'dev' }}
+      environment: dev
+      instance_directory: ${{ inputs.instanceDirectory || './iac' }}
+    secrets: inherit
+
+  prod-plan:
+    permissions:
+      contents: read #read repository content
+      id-token: write #write id tokens
+    uses: ./.github/workflows/terraform-plan-template.yml
+    with:
+      environment: prod
       instance_directory: ${{ inputs.instanceDirectory || './iac' }}
     secrets: inherit
