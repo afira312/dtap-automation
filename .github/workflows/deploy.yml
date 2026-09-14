@@ -44,7 +44,7 @@ jobs:
   deployment:
     name: Deploy
     needs: build
-    runs-on: ubuntu-latest"
+    runs-on: ubuntu-latest
     environment: Development # (replace with input.environment || "Development")
     permissions:
       pages: write # Deploy to github pages
