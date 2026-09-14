@@ -1,49 +1,129 @@
-# Application release flow
+# Release flow
 
-This document describes the application release performed by
-[`cd.yml`](../.github/workflows/cd.yml). It covers the workflow orchestration,
-the work performed by each build and deploy job, the artifact lifecycle, and
-the Azure resources involved.
+This document describes both release streams performed by this repository:
+
+- **Infrastructure release (IaC)**, which plans and applies the Terraform
+  configuration for Development and Production.
+- **Application release**, which builds the environment-specific SPA package
+  and deploys it to Azure App Service.
+
+The streams are triggered by the same merge to `main`, but they are separate
+workflows. Each stream promotes Development before Production; there is no
+workflow dependency between the Terraform stream and the application stream.
 
 ## When the release starts
 
-The `Deploy DTAP application` workflow starts when:
+The release workflows start as follows:
 
-- a commit is pushed to `main` (normally an approved pull request merge); or
-- the workflow is started manually with **Run workflow**.
+- [`tf-apply.yml`](../.github/workflows/tf-apply.yml) starts on a push to
+  `main` or manual dispatch.
+- [`cd.yml`](../.github/workflows/cd.yml) starts on a push to `main` or manual
+  dispatch.
+- [`tf-plan.yml`](../.github/workflows/tf-plan.yml) starts for pull requests
+  targeting `main` or manual dispatch. It validates and plans IaC but does not
+  change Azure resources.
 
-The workflow uses the `dtap-${{ github.ref }}` concurrency group with
-`cancel-in-progress: false`. A second release therefore waits for an existing
-release instead of cancelling it.
+The application workflow uses the `dtap-${{ github.ref }}` concurrency group;
+the Terraform plan and apply workflows use `tfplan-${{ github.ref }}` and
+`tfapply-${{ github.ref }}` respectively. All use
+`cancel-in-progress: false`, so a second run waits instead of cancelling an
+existing run.
 
-## End-to-end release diagram
+## End-to-end release overview
 
 ```mermaid
 flowchart TD
-    START([Push to main<br/>or manual dispatch]) --> DB
+    START([Push to main<br/>or manual dispatch]) --> TFDEV
+    START --> DB
 
-    subgraph DEVELOPMENT["Development GitHub environment"]
+    subgraph INFRASTRUCTURE["Infrastructure release (Terraform)"]
+        TFDEV["dev apply<br/><br/>Checkout<br/>Azure OIDC login<br/>Terraform init and validate<br/>Terraform plan<br/>Summarize plan<br/>Terraform apply"]
+        TFPROD["prod apply<br/><br/>Checkout<br/>Azure OIDC login<br/>Terraform init and validate<br/>Terraform plan<br/>Summarize plan<br/>Terraform apply"]
+        TFDEV -->|success| TFPROD
+    end
+
+    subgraph APPLICATION["Application release"]
         DB["dev-build<br/><br/>Checkout repository<br/>Generate timestamp<br/>Update src/index.html<br/>Create ZIP<br/>Login to Azure<br/>Upload ZIP to Blob Storage"]
         DD["dev-deploy<br/><br/>Login to Azure<br/>Validate package name<br/>Download ZIP from Blob Storage<br/>Deploy ZIP to Development App Service"]
         DB -->|package_name output| DD
-    end
-
-    DD -->|needs: dev-deploy<br/>only after success| PB
-
-    subgraph PRODUCTION["Production GitHub environment"]
         PB["prod-build<br/><br/>Checkout repository<br/>Generate timestamp<br/>Update src/index.html<br/>Create ZIP<br/>Login to Azure<br/>Upload ZIP to Blob Storage"]
         PD["prod-deploy<br/><br/>Login to Azure<br/>Validate package name<br/>Download ZIP from Blob Storage<br/>Deploy ZIP to Production App Service"]
+        DD -->|success| PB
         PB -->|package_name output| PD
     end
 
-    APPROVAL{{"Production environment approval<br/>(when configured)"}} -.-> PB
-    APPROVAL -.-> PD
+    APPROVAL{{"Production environment approval<br/>(when configured)"}} -.-> TFPROD
+    APPROVAL -.-> PB
 ```
 
-The production build is intentionally after the Development deployment. Each
-environment is built separately, so the Production package contains the
-Production environment label and is uploaded under a different package name.
-Production cannot start until Development has completed successfully.
+The Terraform and application streams can run independently after a push to
+`main`. Within each stream, Production cannot start until the Development
+operation succeeds. The Production GitHub environment can add a required
+reviewer gate to both the `prod` Terraform apply and the Production
+application jobs.
+
+## Infrastructure release (IaC)
+
+The infrastructure release is implemented by
+[`tf-apply.yml`](../.github/workflows/tf-apply.yml), which calls
+[`terraform-apply-template.yml`](../.github/workflows/terraform-apply-template.yml)
+for each environment:
+
+```mermaid
+flowchart LR
+    PUSH["Push to main<br/>or manual dispatch"] --> DEV["tf-apply dev<br/>Development environment"]
+    DEV -->|needs: dev<br/>success| PROD["tf-apply prod<br/>Production environment"]
+    PROD --> RES["Updated Azure resources"]
+```
+
+### Terraform apply steps
+
+The reusable Terraform apply workflow runs on `ubuntu-latest` with the
+selected GitHub environment and performs these steps:
+
+```mermaid
+flowchart TD
+    C["Checkout repository"] --> S["Set up Terraform"]
+    S --> L["Azure CLI login<br/>OIDC credentials"]
+    L --> I["Terraform init<br/>environment backend"]
+    I --> V["Terraform validate"]
+    V --> P["Terraform plan<br/>environment tfvars"]
+    P --> SUM["Summarize plan<br/>tf-summarize"]
+    SUM --> A["Terraform apply<br/>saved planfile"]
+    A --> R["Azure resources updated"]
+```
+
+1. **Checkout** checks out the Terraform configuration.
+2. **Set up Terraform** installs the configured Terraform CLI.
+3. **Azure CLI login** authenticates with the environment's OIDC client,
+   tenant, and subscription.
+4. **Terraform init** selects the environment backend:
+   `iac/dev/dev.tfbackend` or `iac/prod/prod.tfbackend`.
+5. **Terraform validate** checks the configuration before planning.
+6. **Terraform plan** uses the matching variable file
+   (`iac/dev/dev.tfvars` or `iac/prod/prod.tfvars`) and writes `planfile`.
+   The `-detailed-exitcode` result is preserved for the workflow.
+7. **Plan summary** renders the plan in standard and tree formats with
+   `tf-summarize`.
+8. **Terraform apply** applies the saved `planfile` non-interactively.
+
+The `dev` apply calls the `Development` GitHub environment. The `prod` apply
+has `needs: dev` and calls the `Production` environment, so the production
+infrastructure change is ordered after Development and can be paused for
+approval.
+
+### Terraform plan checks
+
+[`tf-plan.yml`](../.github/workflows/tf-plan.yml) calls
+[`terraform-plan-template.yml`](../.github/workflows/terraform-plan-template.yml)
+for both `dev` and `prod`. It performs checkout, Terraform setup, Azure OIDC
+login, backend initialization, validation, planning, and plan summarization.
+It does not run `terraform apply`. This makes the proposed infrastructure
+changes visible during pull-request review before a merge can trigger
+`tf-apply.yml`.
+
+The Terraform working directory defaults to `./iac`, but both plan and apply
+entry workflows support a manual `instanceDirectory` override.
 
 ## Workflow and reusable-workflow responsibilities
 
@@ -173,7 +253,18 @@ downloads and deploys the exact filename supplied to the deploy template.
 
 ## Source of truth
 
+- Infrastructure orchestration: [`tf-plan.yml`](../.github/workflows/tf-plan.yml)
+  and [`tf-apply.yml`](../.github/workflows/tf-apply.yml)
+- Terraform reusable workflows:
+  [`terraform-plan-template.yml`](../.github/workflows/terraform-plan-template.yml)
+  and
+  [`terraform-apply-template.yml`](../.github/workflows/terraform-apply-template.yml)
+- Terraform operations:
+  [`terraform-plan/action.yml`](../.github/actions/terraform-plan/action.yml)
+  and
+  [`terraform-apply/action.yml`](../.github/actions/terraform-apply/action.yml)
 - Orchestration: [`cd.yml`](../.github/workflows/cd.yml)
 - Build implementation: [`build-template.yml`](../.github/workflows/build-template.yml)
 - Deploy implementation: [`deploy-template.yml`](../.github/workflows/deploy-template.yml)
+- Terraform root configuration: [`iac/main.tf`](../iac/main.tf)
 - Azure resources: [`iac/_modules/spa/main.tf`](../iac/_modules/spa/main.tf)
