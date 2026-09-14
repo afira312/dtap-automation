@@ -1,16 +1,4 @@
 <!-- BEGIN_TF_DOCS -->
-## Overview
-
-This module provisions the Azure resources required by the static SPA:
-
-- A resource group, App Service plan, and Linux App Service.
-- One application storage account with a private container named `release`.
-- A `Storage Blob Data Contributor` role assignment for the current
-  deployment identity on the `release` container.
-
-The App Service exposes the Terraform environment through the `myEnvironment`
-application setting. The module accepts only `dev` and `prod` environments.
-
 ## Requirements
 
 | Name | Version |
