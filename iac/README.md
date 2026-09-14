@@ -1,9 +1,20 @@
 <!-- BEGIN_TF_DOCS -->
+## Overview
+
+The root Terraform configuration instantiates the SPA module for the selected
+environment. The `dev` and `prod` directories contain the backend and variable
+files used by the reusable Terraform plan and apply actions.
+
+The SPA module creates an App Service plan, an App Service, and an application
+storage account with a private `release` container. The deployment identity is
+assigned `Storage Blob Data Contributor` on that container.
+
 ## Requirements
 
 | Name | Version |
 | ---- | ------- |
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.15.8, < 2.0.0 |
+| <a name="requirement_azapi"></a> [azapi](#requirement\_azapi) | ~> 2.11 |
 | <a name="requirement_azurerm"></a> [azurerm](#requirement\_azurerm) | ~> 4.0 |
 
 ## Providers

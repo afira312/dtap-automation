@@ -19,6 +19,34 @@ resource "azurerm_resource_group" "this" {
   })
 }
 
+module "storage" {
+  source  = "Azure/avm-res-storage-storageaccount/azurerm"
+  version = "0.10.0"
+
+  name                            = "sa${replace(replace(var.resourcePrefix, "-", ""), "_", "")}"
+  parent_id                       = azurerm_resource_group.this.id
+  location                        = azurerm_resource_group.this.location
+  enable_telemetry                = false
+  access_tier                     = "Hot"
+  account_kind                    = "StorageV2"
+  account_replication_type        = "LRS"
+  account_sku_name                = "Standard_LRS"
+  account_tier                    = "Standard"
+  allow_nested_items_to_be_public = false
+  containers = {
+    release = {
+      name          = "release"
+      public_access = "None"
+      role_assignments = {
+        storage_blob_data_contributor = {
+          role_definition_id_or_name = "Storage Blob Data Contributor"
+          principal_id               = data.azurerm_client_config.current.object_id
+        }
+      }
+    }
+  }
+}
+
 module "asp" {
   source  = "Azure/avm-res-web-serverfarm/azurerm"
   version = "2.0.8"
@@ -30,7 +58,7 @@ module "asp" {
   parent_id              = azurerm_resource_group.this.id
   sku_name               = var.asp_sku_name
   zone_balancing_enabled = var.environment == "dev" ? false : true
-  worker_count = var.environment == "dev" ? 1 : 2
+  worker_count           = var.environment == "dev" ? 1 : 2
 
   tags = merge(local.tags, {
     "service-name" = "${var.resourcePrefix}-asp"

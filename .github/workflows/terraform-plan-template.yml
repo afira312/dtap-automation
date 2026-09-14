@@ -1,0 +1,41 @@
+name: Terraform plan template
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: Terraform environment code
+        required: true
+        type: string
+      instance_directory:
+        description: Terraform working directory
+        required: false
+        default: ./iac
+        type: string
+
+env:
+  TF_IN_AUTOMATION: true
+  TF_INPUT: false
+  TF_WARN_OUTPUT_ERRORS: true
+
+jobs:
+  plan:
+    name: ${{ inputs.environment }}-plan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Terraform plan
+        uses: ./.github/actions/terraform-plan
+        with:
+          working-directory: ${{ inputs.instance_directory }}
+          environment: ${{ inputs.environment }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}

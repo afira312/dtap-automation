@@ -1,0 +1,61 @@
+name: Deploy DTAP application
+run-name: >-
+  Deploy | ${{ github.ref_name }} | ${{ github.event_name == 'workflow_dispatch'
+    && 'manual'
+    || 'merge' }}
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dtap-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  dev-build:
+    uses: ./.github/workflows/build-template.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      environment: Development
+      environment_code: dev
+    secrets: inherit
+
+  dev-deploy:
+    needs: dev-build
+    uses: ./.github/workflows/deploy-template.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      environment: Development
+      package_name: ${{ needs.dev-build.outputs.package_name }}
+    secrets: inherit
+
+  prod-build:
+    uses: ./.github/workflows/build-template.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      environment: Production
+      environment_code: prod
+    secrets: inherit
+
+  prod-deploy:
+    needs: prod-build
+    uses: ./.github/workflows/deploy-template.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      environment: Production
+      package_name: ${{ needs.prod-build.outputs.package_name }}
+    secrets: inherit
