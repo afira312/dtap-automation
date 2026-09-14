@@ -1,6 +1,6 @@
 name: "Terraform Apply"
 run-name: >-
-  Terraform apply | ${{ inputs.environment || 'dev' }} | ${{ github.event_name == 'workflow_dispatch'
+  Terraform apply | ${{ github.event_name == 'workflow_dispatch'
     && 'manual'
     || github.ref_name }}
 
@@ -8,81 +8,40 @@ on:
   workflow_dispatch:
     inputs:
       instanceDirectory:
-        description: 'Terraform instance directory for cs-api'
+        description: 'Terraform instance directory'
         required: true
         default: './iac'
-      environment:
-        description: 'Environment (dev/prod)'
-        required: true
-        default: 'dev'
 
   push:
     branches:
       - main
       
-env:
-  TF_IN_AUTOMATION: true
-  TF_INPUT: false
-  TF_WARN_OUTPUT_ERRORS: true
-  TF_WORKING_DIR: ${{ inputs.instanceDirectory || './iac'}}
-  TF_ENVIRONMENT: ${{ inputs.environment || 'dev' }}
-
 permissions:
-  contents: read #read repository content
+  contents: read
 
 concurrency:
-  group: tfapply-${{ inputs.environment || 'dev' }}
+  group: tfapply-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   dev:
-    name: dev-apply
+    uses: ./.github/workflows/terraform-apply-template.yml
     permissions:
-      id-token: write # write id-tokens
-    environment: Development
-    env:
-      TF_ENVIRONMENT: dev
-      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          persist-credentials: false
-
-      - name: Terraform apply
-        uses: ./.github/actions/terraform-apply
-        with:
-          working-directory: ${{ env.TF_WORKING_DIR }}
-          environment: ${{ env.TF_ENVIRONMENT }}
-          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          azure-subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      contents: read
+      id-token: write
+    with:
+      environment: dev
+      github_environment: Development
+      instance_directory: ${{ inputs.instanceDirectory || './iac' }}
+    secrets: inherit
 
   prod:
-    name: prod-apply
+    uses: ./.github/workflows/terraform-apply-template.yml
     permissions:
-      id-token: write # write id-tokens
-    environment: Production
-    env:
-      TF_ENVIRONMENT: prod
-      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          persist-credentials: false
-
-      - name: Terraform apply
-        uses: ./.github/actions/terraform-apply
-        with:
-          working-directory: ${{ env.TF_WORKING_DIR }}
-          environment: ${{ env.TF_ENVIRONMENT }}
-          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          azure-subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      contents: read
+      id-token: write
+    with:
+      environment: prod
+      github_environment: Production
+      instance_directory: ${{ inputs.instanceDirectory || './iac' }}
+    secrets: inherit

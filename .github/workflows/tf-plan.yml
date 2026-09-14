@@ -24,15 +24,8 @@ on:
       - synchronize
       - reopened
 
-env:
-  TF_IN_AUTOMATION: true
-  TF_INPUT: false
-  TF_WARN_OUTPUT_ERRORS: true
-  TF_WORKING_DIR: ${{ inputs.instanceDirectory || './iac'}}
-  TF_ENVIRONMENT: ${{ inputs.environment || 'dev' }}
-
 permissions:
-  contents: read #read repository content
+  contents: read
 
 concurrency:
   group: tfplan-${{ inputs.environment || 'dev' }}
@@ -40,28 +33,11 @@ concurrency:
 
 jobs:
   plan:
-    name: "Plan"
     permissions:
-      id-token: write # write id-tokens
-    #environment: Development
-    env:
-      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          persist-credentials: false
-
-      - name: Terraform plan
-        uses: ./.github/actions/terraform-plan
-        with:
-          working-directory: ${{ env.TF_WORKING_DIR }}
-          environment: ${{ env.TF_ENVIRONMENT }}
-          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          azure-subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/terraform-plan-template.yml
+    with:
+      environment: ${{ inputs.environment || 'dev' }}
+      instance_directory: ${{ inputs.instanceDirectory || './iac' }}
+    secrets: inherit

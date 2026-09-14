@@ -10,6 +10,15 @@ The continuous deployment entry point is
 [`deploy-template.yml`](../.github/workflows/deploy-template.yml) workflows
 for the Development and Production environments.
 
+Terraform uses the same two-layer pattern. The
+[`tf-plan.yml`](../.github/workflows/tf-plan.yml) and
+[`tf-apply.yml`](../.github/workflows/tf-apply.yml) entry points call
+[`terraform-plan-template.yml`](../.github/workflows/terraform-plan-template.yml)
+and
+[`terraform-apply-template.yml`](../.github/workflows/terraform-apply-template.yml).
+Those reusable workflows provide the job-level configuration and call the
+local Terraform composite actions for the Terraform commands.
+
 ## Promotion flow
 
 ```text
@@ -75,3 +84,9 @@ environment's App Service.
 
 The workflows use GitHub OIDC and environment-scoped configuration. No Azure
 credentials or storage keys are stored in the repository.
+
+The Terraform plan workflow can also be started manually with an optional
+working directory and a selected `dev` or `prod` environment. The Terraform
+apply workflow can be started manually with an optional working directory;
+it applies both `dev` and `prod` through their corresponding GitHub
+environments.

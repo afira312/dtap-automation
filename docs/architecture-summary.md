@@ -3,7 +3,8 @@
 The application is a static single-page web app. The CI/CD process builds an
 environment-specific package, stores the immutable ZIP in Azure Blob Storage,
 and deploys it to Azure App Service through GitHub Actions. Terraform plans
-and applies use reusable local composite actions.
+and applies use reusable workflow templates, which call local composite
+actions for the Terraform commands.
 
 ## Application hosting: Azure App Service
 
