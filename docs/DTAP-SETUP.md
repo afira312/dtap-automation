@@ -4,6 +4,12 @@ This repository contains a GitHub Actions pipeline for Terraform and a static
 site deployed to Azure App Service. Workflow logic shared by environments is
 implemented in local composite actions and reusable workflow templates.
 
+The continuous deployment entry point is
+[`cd.yml`](../.github/workflows/cd.yml). It calls the reusable
+[`build-template.yml`](../.github/workflows/build-template.yml) and
+[`deploy-template.yml`](../.github/workflows/deploy-template.yml) workflows
+for the Development and Production environments.
+
 ## Promotion flow
 
 ```text

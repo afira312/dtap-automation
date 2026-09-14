@@ -118,6 +118,8 @@ gitGraph
 - [Assumptions](docs/assumptions.md) - scope and organizational assumptions.
 - [DTAP setup](docs/DTAP-SETUP.md) - repository setup, environment
   configuration, and deployment workflow notes.
+- [Continuous deployment workflow](.github/workflows/cd.yml) - builds and
+  deploys the site to the Development and Production environments.
 - [Issue drift check workflow](.github/workflows/drift-check.yml) - runs the
   automated issue/PR alignment check.
 - [Drift-check script](scripts/drift_check.py) - fetches issue, PR, patch, and
