@@ -61,7 +61,8 @@ module "asp" {
   os_type                = "Linux"
   parent_id              = azurerm_resource_group.this.id
   sku_name               = var.asp_sku_name
-  zone_balancing_enabled = var.environment == "dev" ? false : true
+  # zone_balancing_enabled = var.environment == "dev" ? false : true
+  zone_balancing_enabled = false
   worker_count           = var.environment == "dev" ? 1 : 2
 
   tags = merge(local.tags, {
