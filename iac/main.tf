@@ -37,8 +37,8 @@ module "workflow" {
 
   app_settings = {
     myEnvironment                  = var.environment
-    WEBSITES_PORT                  = "8000" # must match the port in app_command_line
-    PYTHONUNBUFFERED               = "1"    # logs stream in real-time in App Service Log Stream
+    WEBSITES_PORT                  = "8000"
+    PYTHONUNBUFFERED               = "1"
     SCM_DO_BUILD_DURING_DEPLOYMENT = "true"
   }
 
