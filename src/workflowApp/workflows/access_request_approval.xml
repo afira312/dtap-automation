@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Workflow xmlns="urn:ibm:iam:workflow" version="1.0">
+  <Metadata>
+    <Id>WF-ACCESS-APPROVAL-01</Id>
+    <Name>Access Request Approval</Name>
+    <BusinessUnit>IT Security</BusinessUnit>
+    <Priority>normal</Priority>
+    <Description>Standard two-stage approval for user access requests to internal systems.</Description>
+    <Owner>security-team@company.com</Owner>
+    <Version>1.2</Version>
+    <CreatedDate>2026-09-01</CreatedDate>
+  </Metadata>
+  <Activities count="3">
+    <Activity id="act-1" sequence="1" type="approval">
+      <Name>Line Manager Approval</Name>
+      <Assignee>line-manager@company.com</Assignee>
+      <TimeoutDays>3</TimeoutDays>
+      <Description>Direct manager approves the access request on behalf of the employee.</Description>
+    </Activity>
+    <Activity id="act-2" sequence="2" type="approval">
+      <Name>Security Team Sign-off</Name>
+      <Assignee>security-team@company.com</Assignee>
+      <TimeoutDays>2</TimeoutDays>
+      <Description>Security team validates the request against least-privilege policy.</Description>
+    </Activity>
+    <Activity id="act-3" sequence="3" type="task">
+      <Name>Provision Access</Name>
+      <Assignee>iam-ops@company.com</Assignee>
+      <Description>IAM operations team provisions the approved access in the target system.</Description>
+    </Activity>
+  </Activities>
+</Workflow>
