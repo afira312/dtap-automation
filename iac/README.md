@@ -1,14 +1,4 @@
 <!-- BEGIN_TF_DOCS -->
-## Overview
-
-The root Terraform configuration instantiates the SPA module for the selected
-environment. The `dev` and `prod` directories contain the backend and variable
-files used by the reusable Terraform plan and apply actions.
-
-The SPA module creates an App Service plan, an App Service, and an application
-storage account with a private `release` container. The deployment identity is
-assigned `Storage Blob Data Contributor` on that container.
-
 ## Requirements
 
 | Name | Version |
@@ -26,6 +16,7 @@ No providers.
 | Name | Source | Version |
 | ---- | ------ | ------- |
 | <a name="module_spa-01"></a> [spa-01](#module\_spa-01) | ./_modules/spa | n/a |
+| <a name="module_workflow"></a> [workflow](#module\_workflow) | Azure/avm-res-web-site/azurerm | 0.22.0 |
 
 ## Resources
 

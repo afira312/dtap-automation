@@ -1,0 +1,417 @@
+/* ── Reset & base ───────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --ibm-blue:     #0f62fe;
+  --ibm-blue-dk:  #0043ce;
+  --ibm-blue-lt:  #d0e2ff;
+  --ibm-gray-10:  #f4f4f4;
+  --ibm-gray-20:  #e0e0e0;
+  --ibm-gray-50:  #8d8d8d;
+  --ibm-gray-70:  #525252;
+  --ibm-gray-90:  #262626;
+  --ibm-white:    #ffffff;
+  --ibm-red:      #da1e28;
+  --ibm-green:    #198038;
+  --ibm-yellow:   #f1c21b;
+  --radius:       4px;
+  --shadow:       0 2px 6px rgba(0,0,0,.12);
+}
+
+body {
+  font-family: 'IBM Plex Sans', 'Segoe UI', Arial, sans-serif;
+  font-size: 14px;
+  color: var(--ibm-gray-90);
+  background: var(--ibm-gray-10);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Header ─────────────────────────────────────────────────── */
+header {
+  background: var(--ibm-gray-90);
+  color: var(--ibm-white);
+  padding: 0 1.5rem;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.logo { display: flex; align-items: center; gap: .5rem; font-size: 15px; }
+.logo-icon { color: var(--ibm-blue); font-size: 20px; }
+
+.env-badge {
+  background: var(--ibm-yellow);
+  color: var(--ibm-gray-90);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  padding: 2px 8px;
+  border-radius: var(--radius);
+}
+
+/* ── Main ───────────────────────────────────────────────────── */
+main {
+  flex: 1;
+  max-width: 900px;
+  width: 100%;
+  margin: 1.5rem auto;
+  padding: 0 1rem;
+}
+
+/* ── Toolbar ────────────────────────────────────────────────── */
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+  gap: .75rem;
+}
+
+.page-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--ibm-gray-90);
+}
+
+.toolbar-actions { display: flex; gap: .5rem; }
+
+/* ── Buttons ────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: 0 1rem;
+  height: 36px;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, box-shadow .15s;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.btn-primary {
+  background: var(--ibm-blue);
+  color: var(--ibm-white);
+}
+.btn-primary:hover { background: var(--ibm-blue-dk); }
+
+.btn-secondary {
+  background: var(--ibm-white);
+  color: var(--ibm-blue);
+  border: 1px solid var(--ibm-blue);
+  cursor: pointer;
+}
+.btn-secondary:hover { background: var(--ibm-blue-lt); }
+
+.btn-add {
+  background: transparent;
+  color: var(--ibm-blue);
+  border: 1px dashed var(--ibm-blue);
+  height: 30px;
+  padding: 0 .75rem;
+  font-size: 12px;
+}
+.btn-add:hover { background: var(--ibm-blue-lt); }
+
+.btn-danger {
+  background: transparent;
+  color: var(--ibm-red);
+  border: 1px solid var(--ibm-red);
+  height: 28px;
+  padding: 0 .6rem;
+  font-size: 12px;
+}
+.btn-danger:hover { background: #fff1f1; }
+
+/* ── Cards ──────────────────────────────────────────────────── */
+.card {
+  background: var(--ibm-white);
+  border: 1px solid var(--ibm-gray-20);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.25rem;
+  box-shadow: var(--shadow);
+}
+
+.card-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: var(--ibm-gray-70);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  border-bottom: 2px solid var(--ibm-blue);
+  padding-bottom: .4rem;
+  display: inline-block;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+.section-header .card-title { margin-bottom: 0; }
+
+/* ── Form fields ────────────────────────────────────────────── */
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .75rem 1.25rem;
+}
+
+.field { display: flex; flex-direction: column; gap: .3rem; }
+.field-full { grid-column: 1 / -1; }
+
+label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ibm-gray-70);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.required { color: var(--ibm-red); }
+
+input[type="text"],
+input[type="email"],
+textarea,
+select {
+  border: 1px solid var(--ibm-gray-20);
+  border-radius: var(--radius);
+  padding: .45rem .65rem;
+  font-size: 13px;
+  color: var(--ibm-gray-90);
+  background: var(--ibm-white);
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+  font-family: inherit;
+  width: 100%;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--ibm-blue);
+  box-shadow: 0 0 0 2px var(--ibm-blue-lt);
+}
+
+input.readonly {
+  background: var(--ibm-gray-10);
+  color: var(--ibm-gray-50);
+  cursor: default;
+}
+
+textarea { resize: vertical; }
+
+/* ── Activity items ─────────────────────────────────────────── */
+.activities-list { display: flex; flex-direction: column; gap: .75rem; }
+
+.activity-item {
+  border: 1px solid var(--ibm-gray-20);
+  border-radius: var(--radius);
+  padding: .9rem 1rem;
+  background: var(--ibm-gray-10);
+  position: relative;
+}
+
+.activity-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: .75rem;
+}
+
+.activity-seq {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ibm-white);
+  background: var(--ibm-blue);
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.activity-name-preview {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ibm-gray-70);
+  flex: 1;
+  margin-left: .5rem;
+}
+
+.activity-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .6rem .9rem;
+}
+
+.activity-field-full { grid-column: 1 / -1; }
+
+/* ── Type badges ────────────────────────────────────────────── */
+.type-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.type-approval  { background: #d0e2ff; color: #0043ce; }
+.type-task      { background: #defbe6; color: #0e6027; }
+.type-notification { background: #ffd6e8; color: #740937; }
+
+/* ── Empty hint ─────────────────────────────────────────────── */
+.empty-hint {
+  color: var(--ibm-gray-50);
+  font-size: 13px;
+  font-style: italic;
+  padding: .5rem 0;
+  text-align: center;
+}
+
+/* ── Breadcrumb ─────────────────────────────────────────────── */
+.breadcrumb {
+  margin-bottom: .65rem;
+}
+.breadcrumb a {
+  font-size: 13px;
+  color: var(--ibm-blue);
+  text-decoration: none;
+  font-weight: 600;
+}
+.breadcrumb a:hover { text-decoration: underline; }
+
+/* ── Toolbar separator ──────────────────────────────────────── */
+.toolbar-sep {
+  width: 1px;
+  height: 24px;
+  background: var(--ibm-gray-20);
+  align-self: center;
+}
+
+/* ── Ghost button ───────────────────────────────────────────── */
+.btn-ghost {
+  background: transparent;
+  color: var(--ibm-gray-70);
+  border: 1px solid var(--ibm-gray-20);
+}
+.btn-ghost:hover { background: var(--ibm-gray-10); }
+
+/* ── Small button ───────────────────────────────────────────── */
+.btn-sm {
+  height: 28px;
+  padding: 0 .75rem;
+  font-size: 12px;
+}
+
+/* ── Workflow table ─────────────────────────────────────────── */
+.wf-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.wf-table th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--ibm-gray-70);
+  padding: .5rem .75rem;
+  border-bottom: 2px solid var(--ibm-gray-20);
+  white-space: nowrap;
+}
+.wf-table td {
+  padding: .65rem .75rem;
+  border-bottom: 1px solid var(--ibm-gray-10);
+  vertical-align: middle;
+}
+.wf-table tbody tr:hover { background: var(--ibm-gray-10); }
+.wf-table .actions-cell { text-align: right; white-space: nowrap; }
+
+.muted {
+  color: var(--ibm-gray-50);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+/* ── Priority badges ────────────────────────────────────────── */
+.priority-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.priority-low      { background: var(--ibm-gray-20); color: var(--ibm-gray-70); }
+.priority-normal   { background: var(--ibm-blue-lt); color: var(--ibm-blue-dk); }
+.priority-high     { background: #ffd6a5; color: #8a3800; }
+.priority-critical { background: #ffd6d6; color: #a2191f; }
+
+/* ── Utility ────────────────────────────────────────────────── */
+.hidden { display: none !important; }
+
+/* ── Error hint ─────────────────────────────────────────────── */
+.error-hint { color: var(--ibm-red) !important; }
+.error-hint code {
+  background: #fff1f1;
+  padding: 1px 5px;
+  border-radius: var(--radius);
+  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-size: 12px;
+}
+
+/* ── Toast ──────────────────────────────────────────────────── */
+.toast {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  padding: .75rem 1.25rem;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ibm-white);
+  box-shadow: 0 4px 12px rgba(0,0,0,.2);
+  z-index: 1000;
+}
+.toast.success { background: var(--ibm-green); }
+.toast.error   { background: var(--ibm-red); }
+
+/* ── Footer ─────────────────────────────────────────────────── */
+footer {
+  background: var(--ibm-gray-20);
+  color: var(--ibm-gray-50);
+  text-align: center;
+  font-size: 12px;
+  padding: .6rem 1rem;
+}
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .grid-2, .activity-grid { grid-template-columns: 1fr; }
+  .field-full, .activity-field-full { grid-column: unset; }
+  .toolbar { flex-direction: column; align-items: flex-start; }
+}

@@ -40,5 +40,9 @@
 
 ## Outputs
 
-No outputs.
+| Name | Description |
+| ---- | ----------- |
+| <a name="output_asp_id"></a> [asp\_id](#output\_asp\_id) | App Service Plan Id |
+| <a name="output_resource_group_id"></a> [resource\_group\_id](#output\_resource\_group\_id) | Resource Group ID |
+| <a name="output_resource_group_name"></a> [resource\_group\_name](#output\_resource\_group\_name) | Resource Group Name |
 <!-- END_TF_DOCS -->

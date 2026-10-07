@@ -1,0 +1,70 @@
+name: Deploy WorkflowApp
+run-name: >-
+  Deploy WorkflowApp | ${{ github.ref_name }} | ${{ inputs.app_service_name }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_service_name:
+        description: Name of the Azure App Service to deploy to
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: workflowapp-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  dev-build:
+    uses: $/.github/workflows/build-template.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      environment: Development
+      environment_code: dev
+      source_directory: src/workflowApp
+      artifact_prefix: workflowApp
+      update_environment_tag: false
+    secrets: inherit
+
+  dev-deploy:
+    needs: dev-build
+    uses: $/.github/workflows/deploy-template.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      environment: Development
+      package_name: ${{ needs.dev-build.outputs.package_name }}
+      app_service_name: ${{ inputs.app_service_name }}
+    secrets: inherit
+
+  prod-build:
+    needs: dev-deploy
+    uses: $/.github/workflows/build-template.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      environment: Production
+      environment_code: prod
+      source_directory: src/workflowApp
+      artifact_prefix: workflowApp
+      update_environment_tag: false
+    secrets: inherit
+
+  prod-deploy:
+    needs: prod-build
+    uses: $/.github/workflows/deploy-template.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      environment: Production
+      package_name: ${{ needs.prod-build.outputs.package_name }}
+      app_service_name: ${{ inputs.app_service_name }}
+    secrets: inherit
