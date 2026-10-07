@@ -84,6 +84,13 @@ main {
   color: var(--ibm-gray-90);
 }
 
+.page-subtitle {
+  font-size: 12px;
+  color: var(--ibm-gray-70);
+  margin-top: .15rem;
+}
+.page-subtitle strong { color: var(--ibm-blue-dk); }
+
 .toolbar-actions { display: flex; gap: .5rem; }
 
 /* ── Buttons ────────────────────────────────────────────────── */
@@ -371,8 +378,42 @@ textarea { resize: vertical; }
 .priority-high     { background: #ffd6a5; color: #8a3800; }
 .priority-critical { background: #ffd6d6; color: #a2191f; }
 
+/* ── XML preview ────────────────────────────────────────────── */
+.xml-preview {
+  background: var(--ibm-gray-90);
+  color: #e0e0e0;
+  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 1rem 1.1rem;
+  border-radius: var(--radius);
+  overflow-x: auto;
+  white-space: pre;
+  tab-size: 2;
+}
+
+/* ── Import banner ──────────────────────────────────────────── */
+.banner {
+  background: var(--ibm-blue-lt);
+  border-left: 3px solid var(--ibm-blue);
+  border-radius: var(--radius);
+  padding: .75rem 1rem;
+  margin-bottom: 1rem;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ibm-gray-90);
+}
+.banner code {
+  background: rgba(255,255,255,.7);
+  padding: 1px 5px;
+  border-radius: var(--radius);
+  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-size: 12px;
+}
+
 /* ── Utility ────────────────────────────────────────────────── */
 .hidden { display: none !important; }
+.mono { font-family: 'IBM Plex Mono', 'Consolas', monospace; }
 
 /* ── Error hint ─────────────────────────────────────────────── */
 .error-hint { color: var(--ibm-red) !important; }

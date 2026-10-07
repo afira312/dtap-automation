@@ -1,23 +1,43 @@
 'use strict';
 
+// ── Constants ─────────────────────────────────────────────────
+// This prototype manages workflows for a single organization.
+const ORGANIZATION = 'Ahold Group';
+
 // ── State ─────────────────────────────────────────────────────
 let activities      = [];
 let activityCounter = 0;
-let originalXml     = null;   // null = new workflow; string = loaded/imported
+let originalXml     = null;   // last persisted state, for Cancel → revert
+let loadedFile      = null;   // filename this workflow lives in (null = unsaved)
+let pendingImport   = false;  // uploaded, stored in imports/, not yet promoted
+let createdDate     = today();
 
 const params = new URLSearchParams(window.location.search);
-const editId = params.get('id');   // null when creating a new workflow
+const fileRef    = params.get('file');                 // null when creating new
+const mode       = params.get('mode');
+const isView     = mode === 'view';                    // read-only "show" mode
+const isImport   = mode === 'import';                  // open the file picker
 
 // ── DOM refs ──────────────────────────────────────────────────
 const pageTitle      = document.getElementById('pageTitle');
 const wfIdField      = document.getElementById('wfId');
+const wfOrgField     = document.getElementById('wfOrganization');
 const activitiesList = document.getElementById('activitiesList');
 const emptyHint      = document.getElementById('emptyActivities');
 const addActivityBtn = document.getElementById('addActivityBtn');
 const saveBtn        = document.getElementById('saveBtn');
 const cancelBtn      = document.getElementById('cancelBtn');
 const exportBtn      = document.getElementById('exportBtn');
+const editBtn        = document.getElementById('editBtn');
+const viewXmlBtn     = document.getElementById('viewXmlBtn');
 const importInput    = document.getElementById('importInput');
+const importLabel    = document.getElementById('importLabel');
+const toolbarSep     = document.getElementById('toolbarSep');
+const xmlCard        = document.getElementById('xmlCard');
+const xmlPreview     = document.getElementById('xmlPreview');
+const importBanner   = document.getElementById('importBanner');
+const importFilename = document.getElementById('importFilename');
+const envBadge       = document.getElementById('envBadge');
 const toast          = document.getElementById('toast');
 
 // ── Init ──────────────────────────────────────────────────────
@@ -25,26 +45,62 @@ addActivityBtn.addEventListener('click', () => addActivity());
 saveBtn.addEventListener('click', handleSave);
 cancelBtn.addEventListener('click', handleCancel);
 exportBtn.addEventListener('click', handleExport);
+viewXmlBtn.addEventListener('click', toggleXmlPreview);
 importInput.addEventListener('change', handleImport);
 
-if (editId) {
-  pageTitle.textContent = 'Edit Workflow';
-  loadFromServer(editId);
+loadEnv();
+
+if (fileRef) {
+  pageTitle.textContent = isView ? 'View Workflow' : 'Edit Workflow';
+  editBtn.href = `workflow.html?file=${encodeURIComponent(fileRef)}`;
+  loadFromServer(fileRef);
 } else {
-  pageTitle.textContent = 'New Workflow';
+  pageTitle.textContent = isImport ? 'Import Workflow' : 'New Workflow';
   wfIdField.value = generateId();
   updateEmptyHint();
+  // Land on the page with the picker already open — on the prod instance this
+  // is the first thing the operator wants to do.
+  if (isImport) importInput.click();
+}
+
+if (isView) applyViewMode();
+
+async function loadEnv() {
+  try {
+    const res = await fetch('/api/info');
+    const { env } = await res.json();
+    envBadge.textContent = env;
+  } catch {
+    envBadge.textContent = 'OFFLINE';
+  }
+}
+
+// ── View (read-only "show") mode ──────────────────────────────
+function applyViewMode() {
+  // Lock every input so the workflow can be shown but not altered.
+  document.querySelectorAll('#workflowForm input, #workflowForm select, #workflowForm textarea')
+    .forEach(el => { el.disabled = true; });
+
+  // Hide the editing actions; keep Edit / View XML / Export.
+  [saveBtn, cancelBtn, addActivityBtn, importLabel, toolbarSep].forEach(el => el && el.classList.add('hidden'));
+  editBtn.hidden = false;
 }
 
 // ── Load workflow from server ─────────────────────────────────
-async function loadFromServer(id) {
+async function loadFromServer(filename) {
   try {
-    const res = await fetch(`/api/workflows/${encodeURIComponent(id)}`);
+    const res = await fetch(`/api/workflows/${encodeURIComponent(filename)}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const xml = await res.text();
     parseAndLoad(xml);
     originalXml = xml;
-    pageTitle.textContent = document.getElementById('wfName').value || 'Edit Workflow';
+    loadedFile  = filename;
+    const name = document.getElementById('wfName').value;
+    pageTitle.textContent = name || (isView ? 'View Workflow' : 'Edit Workflow');
+    if (isView) {
+      applyViewMode();          // re-apply: parseAndLoad re-rendered the activities
+      showXmlPreview();         // show the artifact straight away in view mode
+    }
   } catch {
     showToast('Could not load workflow from server.', 'error');
   }
@@ -60,11 +116,19 @@ async function handleSave() {
     const res = await fetch('/api/workflows', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ id: meta.id, xml }),
+      // Sending the filename makes an edit overwrite the file it came from
+      // instead of leaving the original behind as a duplicate.
+      body:    JSON.stringify({ filename: loadedFile, name: meta.name, id: meta.id, xml }),
     });
     if (!res.ok) throw new Error();
-    originalXml = xml;
-    showToast(`Saved to workflows/${meta.id}.xml`, 'success');
+    const { filename } = await res.json();
+
+    originalXml   = xml;
+    loadedFile    = filename;
+    pendingImport = false;
+    importBanner.classList.add('hidden');
+    refreshXmlPreview();
+    showToast(`Saved to workflows/${filename}`, 'success');
   } catch {
     showToast('Save failed. Is server.py running?', 'error');
   }
@@ -72,8 +136,16 @@ async function handleSave() {
 
 // ── Cancel ────────────────────────────────────────────────────
 function handleCancel() {
+  if (pendingImport) {
+    // Abandon the import. The imports/ copy stays as the record of the upload,
+    // but nothing is written to workflows/.
+    if (!confirm('Discard this imported workflow? It will not be saved to workflows/.')) return;
+    window.location.href = 'index.html';
+    return;
+  }
+
   if (originalXml !== null) {
-    // Revert to last loaded/imported/saved state
+    // Revert to last loaded/saved state
     parseAndLoad(originalXml);
     showToast('Changes reverted.', 'success');
   } else {
@@ -89,31 +161,33 @@ async function handleExport() {
   if (!validateForm(meta)) return;
   const xml = buildXml(meta, activities);
 
-  // 1 — save to exports/ folder
+  // 1 — save to exports/ folder. The server decides the filename so the
+  //     download below can be given the exact same name.
+  let filename = (loadedFile ? stripXml(loadedFile) : slugify(meta.name)) + '.xml';
   try {
-    await fetch('/api/exports', {
+    const res = await fetch('/api/exports', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ id: meta.id, xml }),
+      body:    JSON.stringify({ filename: loadedFile, name: meta.name, id: meta.id, xml }),
     });
-  } catch { /* server may not be running — still offer download */ }
+    if (res.ok) ({ filename } = await res.json());
+  } catch { /* server may not be running — still offer the download */ }
 
-  // 2 — download to local
-  const blob = new Blob([xml], { type: 'application/xml' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
+  // 2 — download to the client, under the same name as the server-side copy
+  const url = URL.createObjectURL(new Blob([xml], { type: 'application/xml' }));
+  const a   = document.createElement('a');
   a.href     = url;
-  a.download = sanitizeFilename(meta.name) + '.xml';
+  a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
-  showToast(`Exported to exports/${meta.id}.xml — download started.`, 'success');
+  showToast(`Exported to exports/${filename} — download started.`, 'success');
 }
 
 // ── Import ────────────────────────────────────────────────────
 async function handleImport(e) {
   const file = e.target.files[0];
-  if (!file) return;
   importInput.value = '';
+  if (!file) return;
 
   let xml;
   try {
@@ -123,23 +197,51 @@ async function handleImport(e) {
     return;
   }
 
-  // 1 — save to imports/ folder
+  // 1 — load into the form first, so an invalid file never reaches imports/
   try {
-    await fetch('/api/imports', {
+    parseAndLoad(xml);
+  } catch (err) {
+    showToast('Import failed: ' + err.message, 'error');
+    return;
+  }
+
+  // 2 — keep a verbatim copy in imports/
+  let stored = file.name;
+  try {
+    const res = await fetch('/api/imports', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ filename: file.name, xml }),
     });
-  } catch { /* non-fatal if server is not running */ }
+    if (res.ok) ({ filename: stored } = await res.json());
+  } catch { /* non-fatal if the server is not running */ }
 
-  // 2 — load into form
-  try {
-    parseAndLoad(xml);
-    originalXml = xml;
-    showToast('Imported into form. Review and click Save to add to workflows.', 'success');
-  } catch (err) {
-    showToast('Import failed: ' + err.message, 'error');
-  }
+  // 3 — stage it: not in workflows/ until the user saves. Reusing the imported
+  //     filename keeps dev and prod holding the same artifact name.
+  originalXml   = null;
+  loadedFile    = stored;
+  pendingImport = true;
+
+  importFilename.textContent = stored;
+  importBanner.classList.remove('hidden');
+  pageTitle.textContent = document.getElementById('wfName').value || 'Import Workflow';
+  showToast('Imported. Review it, then Save to promote it to workflows/.', 'success');
+}
+
+// ── XML preview (the "show" artifact) ─────────────────────────
+function toggleXmlPreview() {
+  if (xmlCard.classList.contains('hidden')) showXmlPreview();
+  else xmlCard.classList.add('hidden');
+}
+
+function showXmlPreview() {
+  refreshXmlPreview();
+  xmlCard.classList.remove('hidden');
+}
+
+function refreshXmlPreview() {
+  if (xmlCard.classList.contains('hidden') && !isView) return;
+  xmlPreview.textContent = buildXml(readForm(), activities);
 }
 
 // ── Form helpers ──────────────────────────────────────────────
@@ -147,12 +249,15 @@ function readForm() {
   return {
     id:           wfIdField.value.trim(),
     name:         document.getElementById('wfName').value.trim(),
+    organization: (wfOrgField.value || ORGANIZATION).trim(),
     businessUnit: document.getElementById('wfBusinessUnit').value.trim(),
     priority:     document.getElementById('wfPriority').value,
     description:  document.getElementById('wfDescription').value.trim(),
     owner:        document.getElementById('wfOwner').value.trim(),
     version:      document.getElementById('wfVersion').value.trim() || '1.0',
-    createdDate:  new Date().toISOString().slice(0, 10),
+    // Preserved from the loaded/imported XML, so promoting a workflow to prod
+    // does not relabel it as created today.
+    createdDate,
   };
 }
 
@@ -166,16 +271,22 @@ function clearForm() {
   document.getElementById('wfName').value         = '';
   document.getElementById('wfBusinessUnit').value = '';
   document.getElementById('wfDescription').value  = '';
-  document.getElementById('wfOwner').value         = '';
-  document.getElementById('wfVersion').value       = '';
-  document.getElementById('wfPriority').value      = 'normal';
-  wfIdField.value = generateId();
+  document.getElementById('wfOwner').value        = '';
+  document.getElementById('wfVersion').value      = '';
+  document.getElementById('wfPriority').value     = 'normal';
+  wfOrgField.value = ORGANIZATION;
+  wfIdField.value  = generateId();
 
   activities      = [];
   activityCounter = 0;
+  createdDate     = today();
   activitiesList.innerHTML = '';
   updateEmptyHint();
-  originalXml = null;
+  refreshXmlPreview();
+  originalXml   = null;
+  loadedFile    = null;
+  pendingImport = false;
+  importBanner.classList.add('hidden');
 }
 
 // ── Parse XML → populate form ─────────────────────────────────
@@ -193,12 +304,14 @@ function parseAndLoad(xmlText) {
   const meta = doc.querySelector('Metadata');
   if (!meta) throw new Error('Missing <Metadata> element.');
 
-  wfIdField.value                                      = get(meta, 'Id') || generateId();
+  wfIdField.value                                  = get(meta, 'Id') || generateId();
   document.getElementById('wfName').value          = get(meta, 'Name');
+  wfOrgField.value                                 = get(meta, 'Organization') || ORGANIZATION;
   document.getElementById('wfBusinessUnit').value  = get(meta, 'BusinessUnit');
   document.getElementById('wfDescription').value   = get(meta, 'Description');
   document.getElementById('wfOwner').value         = get(meta, 'Owner');
   document.getElementById('wfVersion').value       = get(meta, 'Version');
+  createdDate                                      = get(meta, 'CreatedDate') || today();
 
   const priority = get(meta, 'Priority');
   if (priority) document.getElementById('wfPriority').value = priority;
@@ -218,6 +331,7 @@ function parseAndLoad(xmlText) {
   });
 
   updateEmptyHint();
+  refreshXmlPreview();
 }
 
 // ── Activities ────────────────────────────────────────────────
@@ -236,6 +350,7 @@ function addActivity(data = {}) {
   activities.push(activity);
   renderActivity(activity);
   updateEmptyHint();
+  refreshXmlPreview();
 }
 
 function removeActivity(id) {
@@ -247,6 +362,7 @@ function removeActivity(id) {
     if (seqEl) seqEl.textContent = a.seq;
   });
   updateEmptyHint();
+  refreshXmlPreview();
 }
 
 function syncField(id, field, value) {
@@ -263,6 +379,7 @@ function syncField(id, field, value) {
     const row = document.querySelector(`#${id} .timeout-row`);
     if (row) row.style.display = value === 'approval' ? '' : 'none';
   }
+  refreshXmlPreview();
 }
 
 function renderActivity(a) {
@@ -291,7 +408,7 @@ function renderActivity(a) {
       </div>
       <div class="field">
         <label>Assignee / Approver</label>
-        <input type="text" class="act-assignee" placeholder="e.g. manager@company.com" value="${escHtml(a.assignee)}" />
+        <input type="text" class="act-assignee" placeholder="e.g. manager@ahold.com" value="${escHtml(a.assignee)}" />
       </div>
       <div class="field timeout-row" style="${a.type !== 'approval' ? 'display:none' : ''}">
         <label>Timeout (days)</label>
@@ -310,6 +427,11 @@ function renderActivity(a) {
   item.querySelector('.act-timeout').addEventListener('input', e => syncField(a.id, 'timeout',     e.target.value));
   item.querySelector('.act-desc').addEventListener('input',    e => syncField(a.id, 'description', e.target.value));
   activitiesList.appendChild(item);
+
+  if (isView) {
+    item.querySelectorAll('input, select').forEach(el => { el.disabled = true; });
+    item.querySelector('.remove-btn').classList.add('hidden');
+  }
 }
 
 function updateEmptyHint() {
@@ -336,6 +458,7 @@ function buildXml(meta, acts) {
     `${ind(1)}<Metadata>`,
     `${ind(2)}<Id>${escText(meta.id)}</Id>`,
     `${ind(2)}<Name>${escText(meta.name)}</Name>`,
+    `${ind(2)}<Organization>${escText(meta.organization)}</Organization>`,
     `${ind(2)}<BusinessUnit>${escText(meta.businessUnit)}</BusinessUnit>`,
     `${ind(2)}<Priority>${escText(meta.priority)}</Priority>`,
     `${ind(2)}<Description>${escText(meta.description)}</Description>`,
@@ -351,16 +474,19 @@ function buildXml(meta, acts) {
 }
 
 // ── Utilities ─────────────────────────────────────────────────
+function today()      { return new Date().toISOString().slice(0, 10); }
 function generateId() { return 'WF-' + Date.now().toString(36).toUpperCase(); }
-function sanitizeFilename(s) { return String(s).replace(/[^a-z0-9_\-]/gi, '_').toLowerCase() || 'workflow'; }
-function escText(s)  { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function escAttr(s)  { return escText(s).replace(/"/g,'&quot;'); }
-function escHtml(s)  { return escText(s).replace(/"/g,'&quot;'); }
+function stripXml(s)  { return String(s).replace(/\.xml$/i, ''); }
+// Mirrors _slug() in server.py so the offline download name matches.
+function slugify(s)   { return String(s).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'workflow'; }
+function escText(s)   { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escAttr(s)   { return escText(s).replace(/"/g,'&quot;'); }
+function escHtml(s)   { return escText(s).replace(/"/g,'&quot;'); }
 
 let toastTimer = null;
 function showToast(msg, type = 'success') {
-  toast.textContent  = msg;
-  toast.className    = `toast ${type}`;
+  toast.textContent = msg;
+  toast.className   = `toast ${type}`;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => toast.classList.add('hidden'), 3500);
 }

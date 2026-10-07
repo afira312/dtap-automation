@@ -36,10 +36,9 @@ module "workflow" {
   }
 
   app_settings = {
-    myEnvironment                  = var.environment
+    SCM_DO_BUILD_DURING_DEPLOYMENT = "true"
     WEBSITES_PORT                  = "8000"
     PYTHONUNBUFFERED               = "1"
-    SCM_DO_BUILD_DURING_DEPLOYMENT = "true"
   }
 
   tags = merge(var.tags, {

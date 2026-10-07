@@ -13,7 +13,7 @@
         <span class="logo-icon">&#9632;</span>
         <span class="logo-text">IBM IAM <strong>Workflow Manager</strong></span>
       </div>
-      <span class="env-badge">PROTOTYPE</span>
+      <span class="env-badge" id="envBadge">&hellip;</span>
     </div>
   </header>
 
@@ -25,16 +25,23 @@
     <div class="toolbar">
       <h1 class="page-title" id="pageTitle">Workflow Definition</h1>
       <div class="toolbar-actions">
+        <!-- view-only: switch to the editable form -->
+        <a class="btn btn-primary" id="editBtn" href="#" title="Edit this workflow" hidden>
+          &#9998; Edit
+        </a>
         <!-- secondary: file actions -->
-        <label class="btn btn-secondary" title="Import an existing workflow XML">
+        <label class="btn btn-secondary" id="importLabel" title="Import an existing workflow XML">
           &#8593; Import XML
           <input type="file" id="importInput" accept=".xml" hidden />
         </label>
+        <button class="btn btn-secondary" id="viewXmlBtn" title="Show the generated workflow XML">
+          &#60;/&#62; View XML
+        </button>
         <button class="btn btn-secondary" id="exportBtn" title="Save to exports/ and download">
           &#8595; Export XML
         </button>
         <!-- divider -->
-        <span class="toolbar-sep"></span>
+        <span class="toolbar-sep" id="toolbarSep"></span>
         <!-- primary: form actions -->
         <button class="btn btn-primary" id="saveBtn">&#10003; Save</button>
         <button class="btn btn-ghost"   id="cancelBtn">&#10005; Cancel</button>
@@ -42,6 +49,14 @@
     </div>
 
     <div id="toast" class="toast hidden"></div>
+
+    <!-- Shown after an upload: the file is in imports/, not yet in workflows/ -->
+    <div id="importBanner" class="banner hidden">
+      <strong>Imported <span id="importFilename" class="mono"></span></strong>
+      &mdash; a copy is stored in <code>imports/</code>. Review the workflow below, then
+      <strong>Save</strong> to promote it to <code>workflows/</code>, or
+      <strong>Cancel</strong> to discard it.
+    </div>
 
     <form id="workflowForm" novalidate>
       <!-- ── Workflow Metadata ──────────────────────────────── -->
@@ -55,6 +70,11 @@
           <div class="field">
             <label for="wfId">Workflow ID</label>
             <input type="text" id="wfId" placeholder="Auto-generated" readonly class="readonly" />
+          </div>
+          <div class="field">
+            <label for="wfOrganization">Organization</label>
+            <input type="text" id="wfOrganization" value="Ahold Group" readonly class="readonly"
+                   title="This prototype manages workflows for a single organization." />
           </div>
           <div class="field">
             <label for="wfBusinessUnit">Business Unit <span class="required">*</span></label>
@@ -96,6 +116,12 @@
         </p>
       </section>
     </form>
+
+    <!-- ── Workflow XML (the artifact moved between environments) ── -->
+    <section class="card hidden" id="xmlCard">
+      <h2 class="card-title">Workflow XML</h2>
+      <pre class="xml-preview" id="xmlPreview"></pre>
+    </section>
   </main>
 
   <footer>

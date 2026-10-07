@@ -3,34 +3,35 @@
   <Metadata>
     <Id>WF-PAR-QUARTERLY-01</Id>
     <Name>Quarterly Privileged Access Review</Name>
+    <Organization>Ahold Group</Organization>
     <BusinessUnit>Compliance</BusinessUnit>
     <Priority>high</Priority>
     <Description>Quarterly review of privileged accounts to ensure access is still required and appropriate.</Description>
-    <Owner>compliance@company.com</Owner>
+    <Owner>compliance@ahold.com</Owner>
     <Version>2.0</Version>
     <CreatedDate>2026-07-01</CreatedDate>
   </Metadata>
   <Activities count="4">
     <Activity id="act-1" sequence="1" type="task">
       <Name>Generate Privileged Account Report</Name>
-      <Assignee>iam-ops@company.com</Assignee>
+      <Assignee>iam-ops@ahold.com</Assignee>
       <Description>Extract a full list of privileged accounts from the identity store for review.</Description>
     </Activity>
     <Activity id="act-2" sequence="2" type="approval">
       <Name>System Owner Certification</Name>
-      <Assignee>system-owners@company.com</Assignee>
+      <Assignee>system-owners@ahold.com</Assignee>
       <TimeoutDays>7</TimeoutDays>
       <Description>Each system owner certifies that listed privileged accounts are still required.</Description>
     </Activity>
     <Activity id="act-3" sequence="3" type="approval">
       <Name>CISO Sign-off</Name>
-      <Assignee>ciso@company.com</Assignee>
+      <Assignee>ciso@ahold.com</Assignee>
       <TimeoutDays>5</TimeoutDays>
       <Description>CISO reviews the certification results and approves before remediation proceeds.</Description>
     </Activity>
     <Activity id="act-4" sequence="4" type="task">
       <Name>Revoke Uncertified Access</Name>
-      <Assignee>iam-ops@company.com</Assignee>
+      <Assignee>iam-ops@ahold.com</Assignee>
       <Description>Revoke all accounts that were not certified or explicitly rejected during review.</Description>
     </Activity>
   </Activities>

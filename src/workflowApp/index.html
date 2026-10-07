@@ -13,17 +13,24 @@
         <span class="logo-icon">&#9632;</span>
         <span class="logo-text">IBM IAM <strong>Workflow Manager</strong></span>
       </div>
-      <span class="env-badge">PROTOTYPE</span>
+      <span class="env-badge" id="envBadge">&hellip;</span>
     </div>
   </header>
 
   <main>
     <div class="toolbar">
-      <h1 class="page-title">Workflows</h1>
-      <a href="workflow.html" class="btn btn-primary">+ New Workflow</a>
+      <div>
+        <h1 class="page-title">Workflows</h1>
+        <p class="page-subtitle">Organization: <strong>Ahold Group</strong></p>
+      </div>
+      <div class="toolbar-actions">
+        <a href="workflow.html?mode=import" class="btn btn-secondary"
+           title="Upload a workflow XML exported from another environment">
+          &#8593; Import Workflow
+        </a>
+        <a href="workflow.html" class="btn btn-primary">+ New Workflow</a>
+      </div>
     </div>
-
-    <div id="toast" class="toast hidden"></div>
 
     <section class="card">
       <div id="loadingState" class="empty-hint">Loading&hellip;</div>
@@ -50,7 +57,9 @@
 
       <p id="emptyState" class="empty-hint hidden">
         No workflows saved yet.
-        <a href="workflow.html">Create your first workflow</a>.
+        <a href="workflow.html">Create one</a>, or
+        <a href="workflow.html?mode=import">import a workflow</a>
+        exported from another environment.
       </p>
     </section>
   </main>

@@ -3,28 +3,29 @@
   <Metadata>
     <Id>WF-ONBOARD-PROV-01</Id>
     <Name>New Employee Access Provisioning</Name>
+    <Organization>Ahold Group</Organization>
     <BusinessUnit>Human Resources</BusinessUnit>
     <Priority>normal</Priority>
     <Description>Triggered on day-one of employment to provision standard role-based access for a new joiner.</Description>
-    <Owner>hr-ops@company.com</Owner>
+    <Owner>hr-ops@ahold.com</Owner>
     <Version>1.0</Version>
     <CreatedDate>2026-08-15</CreatedDate>
   </Metadata>
   <Activities count="3">
     <Activity id="act-1" sequence="1" type="notification">
       <Name>Notify IT Helpdesk</Name>
-      <Assignee>helpdesk@company.com</Assignee>
+      <Assignee>helpdesk@ahold.com</Assignee>
       <Description>Alert IT helpdesk that a new joiner requires equipment and base system accounts.</Description>
     </Activity>
     <Activity id="act-2" sequence="2" type="approval">
       <Name>HR Confirms Role Assignment</Name>
-      <Assignee>hr-ops@company.com</Assignee>
+      <Assignee>hr-ops@ahold.com</Assignee>
       <TimeoutDays>1</TimeoutDays>
       <Description>HR confirms the job role so the correct access profile can be applied.</Description>
     </Activity>
     <Activity id="act-3" sequence="3" type="task">
       <Name>Provision Role-Based Access</Name>
-      <Assignee>iam-ops@company.com</Assignee>
+      <Assignee>iam-ops@ahold.com</Assignee>
       <Description>Assign the standard access entitlements mapped to the confirmed job role.</Description>
     </Activity>
   </Activities>
