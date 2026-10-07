@@ -11,7 +11,7 @@ on:
         type: string
 
 permissions:
-  contents: read
+  contents: read #read repository content
 
 concurrency:
   group: workflowapp-${{ github.ref }}
@@ -21,8 +21,8 @@ jobs:
   dev-build:
     uses: $/.github/workflows/build-template.yml
     permissions:
-      contents: read
-      id-token: write
+      contents: read #read repository content
+      id-token: write #write tokens
     with:
       environment: Development
       environment_code: dev
@@ -35,8 +35,8 @@ jobs:
     needs: dev-build
     uses: $/.github/workflows/deploy-template.yml
     permissions:
-      contents: read
-      id-token: write
+      contents: read #read repository content
+      id-token: write #write tokens
     with:
       environment: Development
       package_name: ${{ needs.dev-build.outputs.package_name }}
@@ -47,8 +47,8 @@ jobs:
     needs: dev-deploy
     uses: $/.github/workflows/build-template.yml
     permissions:
-      contents: read
-      id-token: write
+      contents: read #read repository content
+      id-token: write #write tokens
     with:
       environment: Production
       environment_code: prod
@@ -61,8 +61,8 @@ jobs:
     needs: prod-build
     uses: $/.github/workflows/deploy-template.yml
     permissions:
-      contents: read
-      id-token: write
+      contents: read #read repository content
+      id-token: write #write content
     with:
       environment: Production
       package_name: ${{ needs.prod-build.outputs.package_name }}
