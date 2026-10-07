@@ -1,4 +1,4 @@
-name: Build site
+name: Build app
 
 on:
   workflow_call:
@@ -11,6 +11,21 @@ on:
         description: Short environment code used in the package name; production builds should follow deployment of development
         required: true
         type: string
+      source_directory:
+        description: Directory to package, relative to the repository root
+        required: false
+        type: string
+        default: src
+      artifact_prefix:
+        description: Prefix for the package filename, before the environment code and timestamp
+        required: false
+        type: string
+        default: site
+      update_environment_tag:
+        description: Whether to inject the environment name into the site's index.html environment tag
+        required: false
+        type: boolean
+        default: true
     outputs:
       package_name:
         description: Name of the ZIP package uploaded to blob storage
@@ -39,16 +54,18 @@ jobs:
         run: echo "formattedDate=$(date +'%y%m%d.%H%M')" >> "$GITHUB_OUTPUT"
 
       - name: Update environment in site
+        if: ${{ inputs.update_environment_tag }}
         env:
           ENVIRONMENT: ${{ vars.ENVIRONMENT }}
         run: sed -i "s/<span class=\"environment-tag\">[^<]*/<span class=\"environment-tag\">${ENVIRONMENT}/" src/index.html
 
-      - name: Package site
+      - name: Package app
         id: package
         env:
-          ARTIFACT_NAME: site-${{ inputs.environment_code }}-${{ steps.ts.outputs.formattedDate }}.zip
+          SOURCE_DIRECTORY: ${{ inputs.source_directory }}
+          ARTIFACT_NAME: ${{ inputs.artifact_prefix }}-${{ inputs.environment_code }}-${{ steps.ts.outputs.formattedDate }}.zip
         run: |
-          (cd ./src && zip -r "../${ARTIFACT_NAME}" .)
+          (cd "./${SOURCE_DIRECTORY}" && zip -r "$GITHUB_WORKSPACE/${ARTIFACT_NAME}" .)
           echo "package_name=${ARTIFACT_NAME}" >> "$GITHUB_OUTPUT"
 
       - name: Azure login

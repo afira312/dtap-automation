@@ -55,12 +55,12 @@ module "asp" {
   source  = "Azure/avm-res-web-serverfarm/azurerm"
   version = "2.0.8"
 
-  enable_telemetry       = false
-  location               = azurerm_resource_group.this.location
-  name                   = "${var.resourcePrefix}-asp"
-  os_type                = "Linux"
-  parent_id              = azurerm_resource_group.this.id
-  sku_name               = var.asp_sku_name
+  enable_telemetry = false
+  location         = azurerm_resource_group.this.location
+  name             = "${var.resourcePrefix}-asp"
+  os_type          = "Linux"
+  parent_id        = azurerm_resource_group.this.id
+  sku_name         = var.asp_sku_name
   # zone_balancing_enabled = var.environment == "dev" ? false : true
   zone_balancing_enabled = false
   worker_count           = var.environment == "dev" ? 1 : 2

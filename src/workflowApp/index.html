@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IAM Workflow Manager</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-icon">&#9632;</span>
+        <span class="logo-text">IBM IAM <strong>Workflow Manager</strong></span>
+      </div>
+      <span class="env-badge" id="envBadge">&hellip;</span>
+    </div>
+  </header>
+
+  <main>
+    <div class="toolbar">
+      <div>
+        <h1 class="page-title">Workflows</h1>
+        <p class="page-subtitle">Organization: <strong>Ahold Group</strong></p>
+      </div>
+      <div class="toolbar-actions">
+        <a href="workflow.html?mode=import" class="btn btn-secondary"
+           title="Upload a workflow XML exported from another environment">
+          &#8593; Import Workflow
+        </a>
+        <a href="workflow.html" class="btn btn-primary">+ New Workflow</a>
+      </div>
+    </div>
+
+    <section class="card">
+      <div id="loadingState" class="empty-hint">Loading&hellip;</div>
+
+      <div id="errorState" class="empty-hint error-hint hidden">
+        Could not reach the server. Make sure <code>server.py</code> is running
+        (<code>python server.py</code>) then refresh.
+      </div>
+
+      <table class="wf-table hidden" id="wfTable">
+        <thead>
+          <tr>
+            <th>Workflow</th>
+            <th>Business Unit</th>
+            <th>Priority</th>
+            <th>Owner</th>
+            <th>Version</th>
+            <th>Created</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="wfTableBody"></tbody>
+      </table>
+
+      <p id="emptyState" class="empty-hint hidden">
+        No workflows saved yet.
+        <a href="workflow.html">Create one</a>, or
+        <a href="workflow.html?mode=import">import a workflow</a>
+        exported from another environment.
+      </p>
+    </section>
+  </main>
+
+  <footer>
+    <p>IAM Workflow Manager &mdash; Prototype &mdash; DTAP Automation Demo</p>
+  </footer>
+
+  <script src="dashboard.js"></script>
+</body>
+</html>

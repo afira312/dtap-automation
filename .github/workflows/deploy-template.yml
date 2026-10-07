@@ -1,4 +1,4 @@
-name: Deploy site
+name: Deploy app
 
 on:
   workflow_call:
@@ -11,6 +11,11 @@ on:
         description: Name of the ZIP package uploaded by the preceding build workflow
         required: true
         type: string
+      app_service_name:
+        description: Name of the Azure App Service to deploy to; defaults to the APP_SERVICE_NAME variable when not provided
+        required: false
+        type: string
+        default: ''
 
 env:
   AZURE_STORAGE_CONTAINER: release
@@ -58,5 +63,5 @@ jobs:
         env:
           PACKAGE_NAME: ${{ inputs.package_name }}
         with:
-          app-name: ${{ vars.APP_SERVICE_NAME }}
+          app-name: ${{ inputs.app_service_name || vars.APP_SERVICE_NAME }}
           package: ./${{ env.PACKAGE_NAME }}

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Workflow xmlns="urn:ibm:iam:workflow" version="1.0">
+  <Metadata>
+    <Id>WF-EMERGENCY-GRANT-01</Id>
+    <Name>Emergency Break-Glass Access Grant</Name>
+    <BusinessUnit>IT Security</BusinessUnit>
+    <Priority>critical</Priority>
+    <Description>Fast-track approval for emergency privileged access during an incident. All actions are logged for post-incident review.</Description>
+    <Owner>security-team@company.com</Owner>
+    <Version>1.1</Version>
+    <CreatedDate>2026-06-10</CreatedDate>
+  </Metadata>
+  <Activities count="3">
+    <Activity id="act-1" sequence="1" type="approval">
+      <Name>On-Call Security Lead Approval</Name>
+      <Assignee>security-oncall@company.com</Assignee>
+      <TimeoutDays>1</TimeoutDays>
+      <Description>On-call security lead approves the emergency access grant within a 24-hour window.</Description>
+    </Activity>
+    <Activity id="act-2" sequence="2" type="task">
+      <Name>Grant Time-Limited Access</Name>
+      <Assignee>iam-ops@company.com</Assignee>
+      <Description>Provision a time-limited (8-hour) privileged session with full audit logging enabled.</Description>
+    </Activity>
+    <Activity id="act-3" sequence="3" type="task">
+      <Name>Post-Incident Access Review</Name>
+      <Assignee>security-team@company.com</Assignee>
+      <Description>Review access logs and revoke the emergency grant once the incident is resolved.</Description>
+    </Activity>
+  </Activities>
+</Workflow>

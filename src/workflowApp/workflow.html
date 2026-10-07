@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Workflow Definition — IAM Workflow Manager</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-icon">&#9632;</span>
+        <span class="logo-text">IBM IAM <strong>Workflow Manager</strong></span>
+      </div>
+      <span class="env-badge" id="envBadge">&hellip;</span>
+    </div>
+  </header>
+
+  <main>
+    <div class="breadcrumb">
+      <a href="index.html">&#8592; Workflows</a>
+    </div>
+
+    <div class="toolbar">
+      <h1 class="page-title" id="pageTitle">Workflow Definition</h1>
+      <div class="toolbar-actions">
+        <!-- view-only: switch to the editable form -->
+        <a class="btn btn-primary" id="editBtn" href="#" title="Edit this workflow" hidden>
+          &#9998; Edit
+        </a>
+        <!-- secondary: file actions -->
+        <label class="btn btn-secondary" id="importLabel" title="Import an existing workflow XML">
+          &#8593; Import XML
+          <input type="file" id="importInput" accept=".xml" hidden />
+        </label>
+        <button class="btn btn-secondary" id="viewXmlBtn" title="Show the generated workflow XML">
+          &#60;/&#62; View XML
+        </button>
+        <button class="btn btn-secondary" id="exportBtn" title="Save to exports/ and download">
+          &#8595; Export XML
+        </button>
+        <!-- divider -->
+        <span class="toolbar-sep" id="toolbarSep"></span>
+        <!-- primary: form actions -->
+        <button class="btn btn-primary" id="saveBtn">&#10003; Save</button>
+        <button class="btn btn-ghost"   id="cancelBtn">&#10005; Cancel</button>
+      </div>
+    </div>
+
+    <div id="toast" class="toast hidden"></div>
+
+    <!-- Shown after an upload: the file is in imports/, not yet in workflows/ -->
+    <div id="importBanner" class="banner hidden">
+      <strong>Imported <span id="importFilename" class="mono"></span></strong>
+      &mdash; a copy is stored in <code>imports/</code>. Review the workflow below, then
+      <strong>Save</strong> to promote it to <code>workflows/</code>, or
+      <strong>Cancel</strong> to discard it.
+    </div>
+
+    <form id="workflowForm" novalidate>
+      <!-- ── Workflow Metadata ──────────────────────────────── -->
+      <section class="card">
+        <h2 class="card-title">Workflow Metadata</h2>
+        <div class="grid-2">
+          <div class="field">
+            <label for="wfName">Workflow Name <span class="required">*</span></label>
+            <input type="text" id="wfName" placeholder="e.g. New Employee Onboarding" required />
+          </div>
+          <div class="field">
+            <label for="wfId">Workflow ID</label>
+            <input type="text" id="wfId" placeholder="Auto-generated" readonly class="readonly" />
+          </div>
+          <div class="field">
+            <label for="wfOrganization">Organization</label>
+            <input type="text" id="wfOrganization" value="Ahold Group" readonly class="readonly"
+                   title="This prototype manages workflows for a single organization." />
+          </div>
+          <div class="field">
+            <label for="wfBusinessUnit">Business Unit <span class="required">*</span></label>
+            <input type="text" id="wfBusinessUnit" placeholder="e.g. Human Resources" required />
+          </div>
+          <div class="field">
+            <label for="wfPriority">Priority</label>
+            <select id="wfPriority">
+              <option value="low">Low</option>
+              <option value="normal" selected>Normal</option>
+              <option value="high">High</option>
+              <option value="critical">Critical</option>
+            </select>
+          </div>
+          <div class="field field-full">
+            <label for="wfDescription">Description</label>
+            <textarea id="wfDescription" rows="3" placeholder="Describe the purpose of this workflow..."></textarea>
+          </div>
+          <div class="field">
+            <label for="wfOwner">Workflow Owner</label>
+            <input type="text" id="wfOwner" placeholder="e.g. john.doe@company.com" />
+          </div>
+          <div class="field">
+            <label for="wfVersion">Version</label>
+            <input type="text" id="wfVersion" placeholder="e.g. 1.0" />
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Activities ─────────────────────────────────────── -->
+      <section class="card">
+        <div class="section-header">
+          <h2 class="card-title">Activities</h2>
+          <button type="button" class="btn btn-add" id="addActivityBtn">+ Add Activity</button>
+        </div>
+        <div id="activitiesList" class="activities-list"></div>
+        <p id="emptyActivities" class="empty-hint">
+          No activities yet. Click &ldquo;Add Activity&rdquo; to get started.
+        </p>
+      </section>
+    </form>
+
+    <!-- ── Workflow XML (the artifact moved between environments) ── -->
+    <section class="card hidden" id="xmlCard">
+      <h2 class="card-title">Workflow XML</h2>
+      <pre class="xml-preview" id="xmlPreview"></pre>
+    </section>
+  </main>
+
+  <footer>
+    <p>IAM Workflow Manager &mdash; Prototype &mdash; DTAP Automation Demo</p>
+  </footer>
+
+  <script src="workflow.js"></script>
+</body>
+</html>

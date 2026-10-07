@@ -59,6 +59,7 @@ small static site.
 | Path                                                                                               | Purpose                                                                                    |
 | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
 | [`src/`](src/)                                                                                     | Static SPA source: `index.html`, `styles.css`, and `script.js`.                            |
+| [`src/workflowApp/`](src/workflowApp/)                                                             | Workflow App source: Python server, HTML/JS UI, and sample workflow XML files.             |
 | [`iac/`](iac/)                                                                                     | Root Terraform configuration, environment backends/variables, and the reusable SPA module. |
 | [`scripts/drift_check.py`](scripts/drift_check.py)                                                 | Collects issue, PR, patch, and final-file evidence for the issue drift check.              |
 | [`.github/workflows/ci.yml`](.github/workflows/ci.yml)                                             | Validates site files and JavaScript, scans for secrets, and scans workflows.               |
@@ -66,6 +67,7 @@ small static site.
 | [`.github/workflows/cd.yml`](.github/workflows/cd.yml)                                             | Application release entry workflow.                                                        |
 | [`.github/workflows/build-template.yml`](.github/workflows/build-template.yml)                     | Reusable environment-specific build and Blob Storage upload workflow.                      |
 | [`.github/workflows/deploy-template.yml`](.github/workflows/deploy-template.yml)                   | Reusable Blob Storage download and App Service deployment workflow.                        |
+| [`.github/workflows/workflowApp.yml`](.github/workflows/workflowApp.yml)                           | Manually triggered build and deploy workflow for the Workflow App.                         |
 | [`.github/workflows/tf-plan.yml`](.github/workflows/tf-plan.yml)                                   | Terraform plan entry workflow for Development and Production.                              |
 | [`.github/workflows/tf-apply.yml`](.github/workflows/tf-apply.yml)                                 | Ordered Terraform apply entry workflow.                                                    |
 | [`.github/workflows/terraform-plan-template.yml`](.github/workflows/terraform-plan-template.yml)   | Reusable Terraform plan workflow.                                                          |
@@ -129,13 +131,19 @@ flowchart LR
 ```
 
 The root Terraform configuration in [`iac/`](iac/) instantiates the SPA
-module for the selected environment. The module provisions:
+module for the selected environment and adds a second App Service for the
+Workflow App that reuses the SPA module's resource group and App Service Plan.
+The SPA module provisions:
 
 - An Azure resource group.
 - An Azure App Service plan.
 - An Azure App Service for the SPA.
 - An application storage account with a private `release` container.
 - Blob data permissions for the deployment identity.
+
+The root configuration additionally provisions:
+
+- A Python 3.12 App Service for the Workflow App, sharing the SPA resource group and App Service Plan.
 
 Terraform state is stored remotely in Azure and is not committed to Git.
 See [`iac/README.md`](iac/README.md) for generated Terraform module details.
@@ -176,6 +184,24 @@ it is not passed as a GitHub Actions artifact. Production starts only after
 the complete Development build and deployment succeeds. The detailed
 step-by-step diagrams, artifact lifecycle, configuration, and rollback notes
 are in [docs/release-flow.md](docs/release-flow.md).
+
+## Workflow App release
+
+The [Workflow App workflow](.github/workflows/workflowApp.yml) is triggered
+manually via `workflow_dispatch` with an `app_service_name` input. It follows
+the same sequential promotion pattern as the SPA release:
+
+```mermaid
+flowchart LR
+    START[Manual dispatch]
+    START --> DB["dev-build<br/>ZIP src/workflowApp, upload"]
+    DB --> DD["dev-deploy<br/>download ZIP, deploy App Service"]
+    DD -->|success| PB["prod-build<br/>ZIP src/workflowApp, upload"]
+    PB --> PD["prod-deploy<br/>download ZIP, deploy App Service"]
+```
+
+The build step sets `update_environment_tag: false` because the Workflow App
+does not use the SPA's environment label tag.
 
 ## Required GitHub configuration
 
