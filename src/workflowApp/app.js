@@ -166,11 +166,20 @@ function validateForm(meta) {
 }
 
 // ── XML Export ────────────────────────────────────────────────
-function exportWorkflow() {
+async function exportWorkflow() {
   const meta = readForm();
   if (!validateForm(meta)) return;
 
   const xml = buildXml(meta, activities);
+
+  try {
+    await fetch('/api/exports', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ id: meta.id, xml }),
+    });
+  } catch { /* non-fatal if server is not running */ }
+
   const blob = new Blob([xml], { type: 'application/xml' });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
@@ -218,21 +227,33 @@ function buildXml(meta, acts) {
 }
 
 // ── XML Import ────────────────────────────────────────────────
-function handleImport(e) {
+async function handleImport(e) {
   const file = e.target.files[0];
   if (!file) return;
   importInput.value = '';
 
-  const reader = new FileReader();
-  reader.onload = (evt) => {
-    try {
-      parseAndLoad(evt.target.result);
-      showToast('Workflow imported successfully.', 'success');
-    } catch (err) {
-      showToast('Import failed: ' + err.message, 'error');
-    }
-  };
-  reader.readAsText(file);
+  let xml;
+  try {
+    xml = await file.text();
+  } catch {
+    showToast('Could not read file.', 'error');
+    return;
+  }
+
+  try {
+    await fetch('/api/imports', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ filename: file.name, xml }),
+    });
+  } catch { /* non-fatal if server is not running */ }
+
+  try {
+    parseAndLoad(xml);
+    showToast('Workflow imported successfully.', 'success');
+  } catch (err) {
+    showToast('Import failed: ' + err.message, 'error');
+  }
 }
 
 function parseAndLoad(xmlText) {
