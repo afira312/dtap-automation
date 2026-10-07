@@ -14,7 +14,7 @@ module "workflow" {
   version = "0.22.0"
 
   enable_telemetry              = false
-  location                      = azurerm_resource_group.this.location
+  location                      = var.location
   name                          = "${var.resourcePrefix}-workflow"
   parent_id                     = module.spa-01.resource_group_id
   service_plan_resource_id      = module.spa-01.asp_id
