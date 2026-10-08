@@ -242,6 +242,39 @@ Each GitHub environment supplies:
 The production environment can require reviewers. When configured, GitHub
 pauses a production job until the required approval is granted.
 
+## Release-management build identity
+
+The application build workflow writes
+`releasemanagement/deployment.json` into the main site's package for both the
+Development and Production builds. It records the target environment, package
+filename, source commit and ref, repository, parent Actions run ID/attempt and
+run URL, and build timestamp. The release-management page reads that static
+manifest and links to the Actions run that produced the package currently
+serving the page. The manifest is generated on the runner and is not committed
+to the repository.
+
+The branch flow is unchanged: feature branches go through PR checks, and only
+the merge/push to `main` starts `cd.yml` (manual dispatch remains available).
+That workflow deploys Development before it builds and deploys Production. An
+app opened from the Development site identifies the Dev package; the
+Production site identifies its Prod package. Each view is therefore a
+package-identity link for that one deployed site, not a consolidated view of
+both environments.
+
+The manifest does not report in-progress or failed runs, prove application
+health, or make the browser an approval surface. A loaded manifest identifies
+the package being served and provides a direct Actions-run link. Local browser
+gate approvals remain simulated and have no effect on GitHub Environments or
+deployment jobs. Test, QA, and Pre-Production are not pipeline targets today;
+they must not be represented as deployed until infrastructure and workflow
+jobs are deliberately added.
+
+The current Dev and Prod builds still produce separate environment-specific
+packages. Promoting one immutable artifact through all approved environments,
+surfacing live run states, and recording durable authorized approvals are
+future changes that require an agreed environment design, identity model, and
+client-approved gates.
+
 ## Rollback
 
 Packages remain in the `release` container under their timestamped names.

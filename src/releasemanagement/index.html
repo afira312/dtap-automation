@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f3f3ef">
+  <title>Release Management | DTAP</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <aside class="rail" aria-label="Primary navigation">
+    <a class="brand" href="#overview" aria-label="Release desk home">
+      <span class="brand-mark">R<span>/</span></span>
+      <span class="brand-copy">DELIVERY<br><strong>CONTROL</strong></span>
+    </a>
+    <nav class="nav-list">
+      <button class="nav-item active" data-view="overview"><span class="nav-icon">01</span> Release board</button>
+      <button class="nav-item" data-view="gates"><span class="nav-icon">02</span> Gate review</button>
+      <button class="nav-item" data-view="communications"><span class="nav-icon">03</span> Communications</button>
+      <button class="nav-item" data-view="policy"><span class="nav-icon">04</span> Policy &amp; roles</button>
+    </nav>
+    <div class="rail-bottom">
+      <span class="prototype-dot"></span>
+      <div><strong>Release workspace</strong><small>Deployment identity when available</small></div>
+    </div>
+  </aside>
+
+  <main class="workspace">
+    <header class="topbar">
+      <div class="crumb"><span>DTAP</span><span class="crumb-slash">/</span><span>Release management</span></div>
+      <div class="topbar-right"><span class="local-save" id="saveState">Saved in this browser</span><button class="reset-button" id="resetButton" title="Restore the starter example">Reset example</button></div>
+    </header>
+    <div class="prototype-banner"><span class="banner-symbol">i</span><span><strong>Planning mode.</strong> The deployed site can identify its GitHub build and environment. Readiness checks and approvals are local records; this app does not deploy code.</span></div>
+    <div id="viewRoot" aria-live="polite"></div>
+    <footer class="page-footer"><span>Release operating model · Draft for client review</span><span>Environment status reflects repository configuration, not live health.</span></footer>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

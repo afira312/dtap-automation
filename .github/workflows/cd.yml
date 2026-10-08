@@ -26,6 +26,7 @@ jobs:
     with:
       environment: Development
       environment_code: dev
+      deployment_manifest_path: releasemanagement/deployment.json
     secrets: inherit
 
   dev-deploy:
@@ -48,6 +49,7 @@ jobs:
     with:
       environment: Production
       environment_code: prod
+      deployment_manifest_path: releasemanagement/deployment.json
     secrets: inherit
 
   prod-deploy:

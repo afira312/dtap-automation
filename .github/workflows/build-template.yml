@@ -26,6 +26,11 @@ on:
         required: false
         type: boolean
         default: true
+      deployment_manifest_path:
+        description: Optional manifest path, relative to source_directory, containing the build's GitHub and artifact identity
+        required: false
+        type: string
+        default: ''
     outputs:
       package_name:
         description: Name of the ZIP package uploaded to blob storage
@@ -52,6 +57,49 @@ jobs:
       - name: Generate timestamp
         id: ts
         run: echo "formattedDate=$(date +'%y%m%d.%H%M')" >> "$GITHUB_OUTPUT"
+
+      - name: Write deployment manifest
+        if: ${{ inputs.deployment_manifest_path != '' }}
+        env:
+          SOURCE_DIRECTORY: ${{ inputs.source_directory }}
+          MANIFEST_PATH: ${{ inputs.deployment_manifest_path }}
+          ENVIRONMENT_NAME: ${{ inputs.environment }}
+          ENVIRONMENT_CODE: ${{ inputs.environment_code }}
+          PACKAGE_NAME: ${{ inputs.artifact_prefix }}-${{ inputs.environment_code }}-${{ steps.ts.outputs.formattedDate }}.zip
+          COMMIT_SHA: ${{ github.sha }}
+          GIT_REF: ${{ github.ref }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          source = Path(os.environ["SOURCE_DIRECTORY"])
+          relative_path = Path(os.environ["MANIFEST_PATH"])
+          if relative_path.is_absolute() or ".." in relative_path.parts:
+              raise SystemExit("deployment_manifest_path must stay inside source_directory")
+
+          manifest = {
+              "environment": os.environ["ENVIRONMENT_NAME"],
+              "environment_code": os.environ["ENVIRONMENT_CODE"],
+              "package_name": os.environ["PACKAGE_NAME"],
+              "commit_sha": os.environ["COMMIT_SHA"],
+              "ref": os.environ["GIT_REF"],
+              "repository": os.environ["REPOSITORY"],
+              "workflow_run_id": os.environ["RUN_ID"],
+              "workflow_run_attempt": os.environ["RUN_ATTEMPT"],
+              "workflow_run_url": os.environ["RUN_URL"],
+              "built_at_utc": datetime.now(timezone.utc).isoformat()
+          }
+          destination = source / relative_path
+          destination.parent.mkdir(parents=True, exist_ok=True)
+          destination.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+          PY
 
       - name: Update environment in site
         if: ${{ inputs.update_environment_tag }}
