@@ -63,4 +63,6 @@ resource "azurerm_storage_account" "new" {
   account_tier             = "Standard"
   account_replication_type = "LRS"
   account_kind             = "StorageV2"
+
+  public_network_access_enabled = false
 }
