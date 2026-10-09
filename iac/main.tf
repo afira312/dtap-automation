@@ -50,3 +50,19 @@ module "workflow" {
     "service-name" = "${var.resourcePrefix}-app"
   })
 }
+
+resource "azurerm_resource_group" "new" {
+  name     = "rg-ahold-poc-temp-swc"
+  location = "swedencentral"
+}
+
+resource "azurerm_storage_account" "new" {
+  name                     = "staholdpoctempswc"
+  resource_group_name      = azurerm_resource_group.new.name
+  location                 = azurerm_resource_group.new.location
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
+  account_kind             = "StorageV2"
+
+  public_network_access_enabled = false
+}
